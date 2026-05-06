@@ -1,0 +1,5 @@
+**
+!build/web/**
+!nixpacks.toml
+!railway.json
+!serve.py

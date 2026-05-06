@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["python3"]
+
+[phases.build]
+cmds = ["echo 'Deploying Flutter web build'", "cp -r build/web/* ."]
+
+[start]
+cmd = "python3 serve.py"
