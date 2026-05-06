@@ -32,25 +32,6 @@ class AlfaZuluApp extends StatelessWidget {
   }
 }
 
-class ErrorWidgetBuilder extends StatelessWidget {
-  final Widget child;
-
-  const ErrorWidgetBuilder({super.key, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    return Builder(
-      builder: (context) {
-        FlutterError.onError = (details) {
-          print('Flutter Error: ${details.summary}');
-          print('Stack: ${details.stack}');
-        };
-        return child;
-      },
-    );
-  }
-}
-
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -256,15 +237,6 @@ class _MainNavigationState extends State<MainNavigation>
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const MapsScreen(),
-    const TGCFScreen(),
-    const FavoritesScreen(),
-    const PremiumScreen(),
-    const SettingsScreen(),
-  ];
-
   @override
   void initState() {
     super.initState();
@@ -279,8 +251,6 @@ class _MainNavigationState extends State<MainNavigation>
     // Cargar datos iniciales cuando el usuario esté disponible
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final provider = context.read<AppProvider>();
-      // Esperar a que el usuario esté cargado
-      await Future.delayed(const Duration(milliseconds: 100));
       if (provider.currentUser != null) {
         provider.loadResources();
         provider.loadMaps();
@@ -295,10 +265,22 @@ class _MainNavigationState extends State<MainNavigation>
     super.dispose();
   }
 
+  Widget _buildScreen(int index) {
+    switch (index) {
+      case 0: return const HomeScreen();
+      case 1: return const MapsScreen();
+      case 2: return const TGCFScreen();
+      case 3: return const FavoritesScreen();
+      case 4: return const PremiumScreen();
+      case 5: return const SettingsScreen();
+      default: return const HomeScreen();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _screens[_selectedIndex],
+      body: _buildScreen(_selectedIndex),
       bottomNavigationBar: AnimatedBuilder(
         animation: _pulseAnimation,
         builder: (context, child) {
