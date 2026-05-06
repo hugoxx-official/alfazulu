@@ -32,6 +32,25 @@ class AlfaZuluApp extends StatelessWidget {
   }
 }
 
+class ErrorWidgetBuilder extends StatelessWidget {
+  final Widget child;
+
+  const ErrorWidgetBuilder({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Builder(
+      builder: (context) {
+        FlutterError.onError = (details) {
+          print('Flutter Error: ${details.summary}');
+          print('Stack: ${details.stack}');
+        };
+        return child;
+      },
+    );
+  }
+}
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
