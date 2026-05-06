@@ -6,6 +6,8 @@ import 'screens/home_screen.dart';
 import 'screens/maps_screen.dart';
 import 'screens/favorites_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/tgcf_screen.dart';
+import 'screens/premium_screen.dart';
 import 'theme/app_theme.dart';
 import 'widgets/password_dialog.dart';
 
@@ -238,7 +240,9 @@ class _MainNavigationState extends State<MainNavigation>
   final List<Widget> _screens = [
     const HomeScreen(),
     const MapsScreen(),
+    const TGCFScreen(),
     const FavoritesScreen(),
+    const PremiumScreen(),
     const SettingsScreen(),
   ];
 
@@ -299,8 +303,16 @@ class _MainNavigationState extends State<MainNavigation>
                 label: 'Mapas',
               ),
               NavigationDestination(
+                icon: Icon(Icons.fitness_center),
+                label: 'TGCF',
+              ),
+              NavigationDestination(
                 icon: Icon(Icons.star_outline),
                 label: 'Favoritos',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.workspace_premium_outlined),
+                label: 'Premium',
               ),
               NavigationDestination(
                 icon: Icon(Icons.settings_outlined),
