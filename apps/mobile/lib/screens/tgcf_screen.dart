@@ -291,6 +291,7 @@ class _TGCFScreenState extends State<TGCFScreen>
             if (_result != null) ...[
               const SizedBox(height: 24),
               _buildResults(isTablet),
+              _buildTips(),
             ],
 
             const SizedBox(height: 32),
@@ -481,6 +482,84 @@ class _TGCFScreenState extends State<TGCFScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildTips() {
+    final details = _result!['details'] as Map<String, dynamic>;
+    final total = _result!['total'] as int;
+    final max = _result!['max'] as int;
+    final percentage = (total / max * 100);
+
+    // Encontrar ejercicios con baja puntuación (< 50%)
+    final weakExercises = <String>[];
+    final tips = <String>[];
+
+    details.forEach((key, value) {
+      final score = value['score'] as int;
+      final maxScore = value['max'] as int;
+      final exercisePercentage = (score / maxScore * 100);
+
+      if (exercisePercentage < 50) {
+        weakExercises.add(key);
+      }
+    });
+
+    // Generar tips según ejercicios débiles
+    if (weakExercises.any((e) => e.contains('Flexiones'))) {
+      tips.add('💪 FLEXIONES: Practica series de 5-10 repeticiones múltiples veces al día. Fortalece pecho, tríceps y core con planchas.');
+    }
+    if (weakExercises.any((e) => e.contains('Abdominales'))) {
+      tips.add('🏋️ ABDOMINALES: Entrena core diariamente. Haz series de 20-30 repeticiones. Mejora técnica: espalda completamente en el suelo.');
+    }
+    if (weakExercises.any((e) => e.contains('CAV'))) {
+      tips.add('⏱️ CAV: Trabaja agilidad y coordinación. Practica el circuito completo cronometrado. Enfócate en transiciones rápidas entre ejercicios.');
+    }
+    if (weakExercises.any((e) => e.contains('Carrera'))) {
+      tips.add('🏃 CARRERA: Incorpora entrenamiento interválico (HIIT) 2-3 veces/semana. Salidas en cuesta mejoran potencia. Ritmo constante es clave.');
+    }
+
+    // Tips generales según porcentaje
+    if (percentage < 40) {
+      tips.add('📋 PLANIFICA: Crea rutina semanal equilibrada. Descansa 1-2 días. Duerme 7-8 horas. Hidratación y nutrición adecuadas.');
+    } else if (percentage < 60) {
+      tips.add('📈 PROGRESA: Aumenta intensidad gradualmente (10% semanal). Registra marcas para ver mejora. Constancia > intensidad.');
+    }
+
+    if (tips.isEmpty) {
+      tips.add('✅ ¡Buen trabajo! Mantén la rutina y sigue progresando.');
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        Text(
+          '💡 TIPS DE MEJORA',
+          style: GoogleFonts.orbitron(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.amber,
+            letterSpacing: 2,
+          ),
+        ),
+        const SizedBox(height: 12),
+        ...tips.map((tip) => Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.amber.withOpacity(0.3)),
+            ),
+            child: Text(
+              tip,
+              style: const TextStyle(color: Colors.white70, fontSize: 12),
+            ),
+          ),
+        )),
+      ],
     );
   }
 }
