@@ -1114,7 +1114,8 @@ class _PremiumManagerDialogState extends State<_PremiumManagerDialog> with Singl
         final planId = plan['id'] ?? '';
         final planName = plan['plan_name'] ?? '';
         final displayName = plan['display_name'] ?? '';
-        final price = plan['price'] ?? '';
+        final priceMonthly = plan['price_monthly'] ?? '0';
+        final priceLifetime = plan['price_lifetime'] ?? '0';
         final color = plan['color'] ?? '#666666';
         final features = (plan['features'] as List?)?.map((e) => e.toString()).toList() ?? [];
         final limitations = (plan['limitations'] as List?)?.map((e) => e.toString()).toList() ?? [];
@@ -1137,10 +1138,19 @@ class _PremiumManagerDialogState extends State<_PremiumManagerDialog> with Singl
                       ),
                     ),
                     Expanded(
-                      child: Text(
-                        price,
-                        style: GoogleFonts.orbitron(fontSize: 14, color: Colors.white),
-                        textAlign: TextAlign.right,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            priceMonthly == '0' ? 'Gratis' : '\$${priceMonthly}/mes',
+                            style: GoogleFonts.orbitron(fontSize: 12, color: Colors.white),
+                          ),
+                          if (priceLifetime != '0')
+                            Text(
+                              '\$${priceLifetime} vitalicio',
+                              style: GoogleFonts.orbitron(fontSize: 10, color: Colors.grey),
+                            ),
+                        ],
                       ),
                     ),
                     IconButton(
@@ -1229,7 +1239,8 @@ class _PremiumManagerDialogState extends State<_PremiumManagerDialog> with Singl
   Future<void> _editPlan(Map<String, dynamic> plan) async {
     final planId = plan['id'] ?? '';
     final displayNameController = TextEditingController(text: plan['display_name'] ?? '');
-    final priceController = TextEditingController(text: plan['price'] ?? '');
+    final priceMonthlyController = TextEditingController(text: plan['price_monthly'] ?? '0');
+    final priceLifetimeController = TextEditingController(text: plan['price_lifetime'] ?? '0');
     final colorController = TextEditingController(text: plan['color'] ?? '#666666');
 
     await showDialog(
@@ -1248,9 +1259,15 @@ class _PremiumManagerDialogState extends State<_PremiumManagerDialog> with Singl
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: priceController,
+                controller: priceMonthlyController,
                 style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration('Precio (ej: 4.99/mes)'),
+                decoration: _inputDecoration('Precio mensual (ej: 4.99)'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: priceLifetimeController,
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration('Precio vitalicio (ej: 49.99)'),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -1271,7 +1288,8 @@ class _PremiumManagerDialogState extends State<_PremiumManagerDialog> with Singl
               Navigator.pop(context);
               await _updatePlan(planId, {
                 'display_name': displayNameController.text,
-                'price': priceController.text,
+                'price_monthly': priceMonthlyController.text,
+                'price_lifetime': priceLifetimeController.text,
                 'color': colorController.text,
               });
             },
@@ -1336,7 +1354,8 @@ class _PremiumManagerDialogState extends State<_PremiumManagerDialog> with Singl
 
   Future<void> _addNewPlan() async {
     final displayNameController = TextEditingController();
-    final priceController = TextEditingController();
+    final priceMonthlyController = TextEditingController();
+    final priceLifetimeController = TextEditingController();
     final colorController = TextEditingController(text: '#666666');
     final planNameController = TextEditingController();
 
@@ -1362,9 +1381,15 @@ class _PremiumManagerDialogState extends State<_PremiumManagerDialog> with Singl
               ),
               const SizedBox(height: 12),
               TextField(
-                controller: priceController,
+                controller: priceMonthlyController,
                 style: const TextStyle(color: Colors.white),
-                decoration: _inputDecoration('Precio'),
+                decoration: _inputDecoration('Precio mensual (ej: 4.99)'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: priceLifetimeController,
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration('Precio vitalicio (ej: 49.99)'),
               ),
               const SizedBox(height: 12),
               TextField(
@@ -1390,7 +1415,8 @@ class _PremiumManagerDialogState extends State<_PremiumManagerDialog> with Singl
                   body: jsonEncode({
                     'plan_name': planNameController.text.toLowerCase(),
                     'display_name': displayNameController.text,
-                    'price': priceController.text,
+                    'price_monthly': priceMonthlyController.text,
+                    'price_lifetime': priceLifetimeController.text,
                     'color': colorController.text,
                     'features': [],
                     'limitations': [],
