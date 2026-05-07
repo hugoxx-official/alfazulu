@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:file_picker/file_picker.dart';
 import '../providers/app_provider.dart';
 
 class AdminScreen extends StatefulWidget {
@@ -738,6 +739,8 @@ class _MapFormDialogState extends State<_MapFormDialog> {
   final _regionController = TextEditingController();
   String _fileType = 'PDF';
   int _fileSize = 0;
+  PlatformFile? _pickedFile;
+  bool _isUploading = false;
   final _fileTypes = ['PDF', 'JPG', 'PNG', 'KML', 'GPX', 'KMZ', 'TIFF', 'GEOTIFF', 'SHP', 'GEOJSON', 'MBTILES', 'GPKG', 'DTED', 'CADRG'];
 
   @override
@@ -746,7 +749,7 @@ class _MapFormDialogState extends State<_MapFormDialog> {
     if (widget.map != null) {
       _nameController.text = widget.map['name'] ?? '';
       _descController.text = widget.map['description'] ?? '';
-      _urlController.text = widget.map['download_url'] ?? '';
+      _urlController.text = widget.map['file_url'] ?? '';
       _scaleController.text = widget.map['scale'] ?? '';
       _regionController.text = widget.map['region'] ?? '';
       _fileSize = widget.map['file_size'] ?? 0;
@@ -754,40 +757,115 @@ class _MapFormDialogState extends State<_MapFormDialog> {
     }
   }
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descController.dispose();
+    _urlController.dispose();
+    _scaleController.dispose();
+    _regionController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['kml', 'kmz', 'gpx', 'pdf', 'jpg', 'png', 'tiff', 'geotiff', 'shp', 'geojson', 'mbtiles', 'gpkg'],
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.single.bytes != null) {
+        setState(() {
+          _pickedFile = result.files.first;
+          _fileSize = _pickedFile!.size;
+          final ext = _pickedFile!.extension?.toUpperCase() ?? 'PDF';
+          if (_fileTypes.contains(ext)) {
+            _fileType = ext;
+          }
+        });
+      }
+    } catch (e) {
+      print('Error picking file: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al seleccionar archivo: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
 
+    setState(() => _isUploading = true);
+
     try {
-      final body = {
-        'name': _nameController.text,
-        'description': _descController.text,
-        'scale': _scaleController.text,
-        'region': _regionController.text,
-        'file_type': _fileType,
-        'file_size': _fileSize,
-        'download_url': _urlController.text,
-        'thumbnail_url': '',
-        'coordinates': null,
-      };
-
-      if (widget.map != null) {
-        await http.put(
-          Uri.parse('${AppProvider.apiUrl}/admin/maps/${widget.map['id']}'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
+      if (_pickedFile != null && _pickedFile!.bytes != null) {
+        // Subir archivo al backend
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('${AppProvider.apiUrl}/maps/upload'),
         );
+
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'file',
+            _pickedFile!.bytes!,
+            filename: _pickedFile!.name,
+          ),
+        );
+
+        request.fields['name'] = _nameController.text;
+        request.fields['description'] = _descController.text;
+        request.fields['scale'] = _scaleController.text;
+        request.fields['region'] = _regionController.text;
+        request.fields['file_type'] = _fileType;
+        request.fields['file_size'] = _fileSize.toString();
+
+        final streamedResponse = await request.send();
+        final response = await http.Response.fromStream(streamedResponse);
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          widget.onSave();
+          if (mounted) Navigator.pop(context);
+        } else {
+          print('Error uploading map: ${response.body}');
+        }
       } else {
-        await http.post(
-          Uri.parse('${AppProvider.apiUrl}/admin/maps'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
-        );
-      }
+        // Solo URL
+        final body = {
+          'name': _nameController.text,
+          'description': _descController.text,
+          'scale': _scaleController.text,
+          'region': _regionController.text,
+          'file_type': _fileType,
+          'file_size': _fileSize,
+          'file_url': _urlController.text,
+          'thumbnail_url': '',
+        };
 
-      widget.onSave();
-      if (mounted) Navigator.pop(context);
+        if (widget.map != null) {
+          await http.put(
+            Uri.parse('${AppProvider.apiUrl}/admin/maps/${widget.map['id']}'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          );
+        } else {
+          await http.post(
+            Uri.parse('${AppProvider.apiUrl}/admin/maps'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          );
+        }
+
+        widget.onSave();
+        if (mounted) Navigator.pop(context);
+      }
     } catch (e) {
-      // Error saving map
+      print('Error saving map: $e');
+    } finally {
+      setState(() => _isUploading = false);
     }
   }
 
@@ -873,11 +951,34 @@ class _MapFormDialogState extends State<_MapFormDialog> {
                 onChanged: (v) => setState(() => _fileType = v!),
               ),
               const SizedBox(height: 12),
+              // File picker button
+              ElevatedButton.icon(
+                onPressed: _isUploading ? null : _pickFile,
+                icon: _pickedFile != null ? const Icon(Icons.check, color: Colors.black) : const Icon(Icons.upload_file, color: Colors.white),
+                label: Text(_pickedFile != null ? 'ARCHIVO SELECCIONADO' : 'SELECCIONAR ARCHIVO'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _pickedFile != null ? Colors.green : Colors.red,
+                  foregroundColor: _pickedFile != null ? Colors.black : Colors.white,
+                  minimumSize: const Size(double.infinity, 48),
+                ),
+              ),
+              if (_pickedFile != null) ...[
+                const SizedBox(height: 8),
+                Text(
+                  'Archivo: ${_pickedFile!.name}',
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+                Text(
+                  'Tamaño: ${_formatSize(_fileSize)}',
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+              const SizedBox(height: 12),
               TextFormField(
                 controller: _urlController,
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
-                  labelText: 'URL de descarga',
+                  labelText: 'URL de descarga (opcional)',
                   labelStyle: const TextStyle(color: Colors.grey),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   focusedBorder: OutlineInputBorder(
@@ -892,9 +993,24 @@ class _MapFormDialogState extends State<_MapFormDialog> {
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('CANCELAR')),
-        ElevatedButton(onPressed: _save, child: const Text('GUARDAR')),
+        ElevatedButton(
+          onPressed: _isUploading ? null : _save,
+          child: _isUploading
+              ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : const Text('GUARDAR'),
+        ),
       ],
     );
+  }
+
+  String _formatSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 }
 
