@@ -58,8 +58,13 @@ class AppProvider extends ChangeNotifier {
           id: userId,
           username: username,
           favorites: prefs.getStringList('favorites') ?? [],
+          isPremium: prefs.getBool('is_premium') ?? false,
+          premiumPlan: prefs.getString('premium_plan'),
+          subscriptionEnd: prefs.getString('subscription_end') != null
+            ? DateTime.tryParse(prefs.getString('subscription_end')!)
+            : null,
         );
-        print('Sesión cargada exitosamente: ${_currentUser!.username}');
+        print('Sesión cargada exitosamente: ${_currentUser!.username} (Premium: ${_currentUser!.isPremium})');
       } else {
         print('No hay sesión guardada');
       }
@@ -120,19 +125,22 @@ class AppProvider extends ChangeNotifier {
           return;
         }
 
-        _currentUser = User(
-          id: userId,
-          username: username,
-          favorites: [],
-        );
+        _currentUser = User.fromJson(data['user']);
 
-        print('Usuario creado: ${_currentUser!.id} - ${_currentUser!.username}');
+        print('Usuario creado/cargado: ${_currentUser!.id} - ${_currentUser!.username} (Premium: ${_currentUser!.isPremium})');
 
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user_id', _currentUser!.id);
         await prefs.setString('username', _currentUser!.username);
-        await prefs.setStringList('favorites', []);
+        await prefs.setStringList('favorites', _currentUser!.favorites);
         await prefs.setBool('app_initialized', true);
+        await prefs.setBool('is_premium', _currentUser!.isPremium);
+        if (_currentUser!.premiumPlan != null) {
+          await prefs.setString('premium_plan', _currentUser!.premiumPlan!);
+        }
+        if (_currentUser!.subscriptionEnd != null) {
+          await prefs.setString('subscription_end', _currentUser!.subscriptionEnd!.toIso8601String());
+        }
 
         print('SharedPreferences guardados');
 

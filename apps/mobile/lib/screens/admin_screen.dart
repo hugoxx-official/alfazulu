@@ -227,6 +227,12 @@ class _AdminScreenState extends State<AdminScreen> {
               subtitle: 'Formatos soportados (ATAK)',
               onTap: () => _showFileTypesInfo(context),
             ),
+            _AdminGridItem(
+              icon: Icons.workspace_premium,
+              title: 'USUARIOS PREMIUM',
+              subtitle: 'Gestionar planes premium',
+              onTap: () => _showPremiumManager(context),
+            ),
             const SizedBox(height: 24),
             Card(
               color: const Color(0xFF0A0A0A),
@@ -304,6 +310,10 @@ class _AdminScreenState extends State<AdminScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _showPremiumManager(BuildContext context) async {
+    await showDialog(context: context, builder: (_) => const _PremiumManagerDialog());
   }
 }
 
@@ -901,6 +911,168 @@ class _AdminGridItem extends StatelessWidget {
         trailing: const Icon(Icons.chevron_right, color: Colors.red),
         onTap: onTap,
       ),
+    );
+  }
+}
+
+class _PremiumManagerDialog extends StatefulWidget {
+  const _PremiumManagerDialog();
+
+  @override
+  State<_PremiumManagerDialog> createState() => _PremiumManagerDialogState();
+}
+
+class _PremiumManagerDialogState extends State<_PremiumManagerDialog> {
+  List<dynamic> _users = [];
+  bool _isLoading = true;
+
+  final List<String> _plans = ['MENSUAL', 'ANUAL', 'VITALICIO'];
+  final List<String> _durations = ['1 mes', '6 meses', '1 año', 'Vitalicio'];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUsers();
+  }
+
+  Future<void> _loadUsers() async {
+    setState(() => _isLoading = true);
+    try {
+      final response = await http.get(Uri.parse('${AppProvider.apiUrl}/users'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() => _users = data['users'] ?? []);
+      }
+    } catch (e) {
+      print('Error loading users: $e');
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _setPremium(String userId, String plan, String duration) async {
+    try {
+      DateTime? endDate;
+      final now = DateTime.now();
+      switch (duration) {
+        case '1 mes': endDate = DateTime(now.year, now.month + 1, now.day); break;
+        case '6 meses': endDate = DateTime(now.year, now.month + 6, now.day); break;
+        case '1 año': endDate = DateTime(now.year + 1, now.month, now.day); break;
+        case 'Vitalicio': endDate = DateTime(2099, 12, 31); break;
+      }
+
+      final response = await http.patch(
+        Uri.parse('${AppProvider.apiUrl}/users/$userId/premium'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'is_premium': true,
+          'premium_plan': plan,
+          'subscription_end': endDate?.toIso8601String(),
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Plan $plan activado por $duration'), backgroundColor: Colors.green),
+          );
+          _loadUsers();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  Future<void> _removePremium(String userId) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('${AppProvider.apiUrl}/users/$userId/premium'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'is_premium': false, 'premium_plan': null, 'subscription_end': null}),
+      );
+
+      if (response.statusCode == 200) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: const Text('Premium removido'), backgroundColor: Colors.orange),
+          );
+          _loadUsers();
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: const Color(0xFF0A0A0A),
+      title: Text('GESTIONAR PREMIUM', style: GoogleFonts.orbitron(color: Colors.red)),
+      content: SizedBox(
+        width: 500,
+        height: 400,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator(color: Colors.red))
+            : _users.isEmpty
+                ? const Center(child: Text('No hay usuarios', style: TextStyle(color: Colors.grey)))
+                : ListView.builder(
+                    itemCount: _users.length,
+                    itemBuilder: (_, i) {
+                      final user = _users[i];
+                      final isPremium = user['is_premium'] ?? false;
+                      final plan = user['premium_plan'];
+                      final subEnd = user['subscription_end'];
+
+                      return Card(
+                        color: const Color(0xFF1A1A1A),
+                        margin: const EdgeInsets.symmetric(vertical: 4),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: isPremium ? Colors.amber : Colors.grey,
+                            child: Icon(isPremium ? Icons.star : Icons.person, color: Colors.black),
+                          ),
+                          title: Text(user['username'] ?? 'Sin nombre', style: GoogleFonts.orbitron(color: Colors.white, fontSize: 14)),
+                          subtitle: Text(
+                            isPremium ? '$plan - Hasta: ${subEnd != null ? DateTime.parse(subEnd).toString().split(' ')[0] : 'N/A'}' : 'Sin premium',
+                            style: TextStyle(color: isPremium ? Colors.amber : Colors.grey[600], fontSize: 11),
+                          ),
+                          trailing: PopupMenuButton<String>(
+                            icon: const Icon(Icons.more_vert, color: Colors.red),
+                            onSelected: (value) {
+                              if (value == 'remove') {
+                                _removePremium(user['id']);
+                              } else {
+                                final parts = value.split('|');
+                                if (parts.length == 2) _setPremium(user['id'], parts[0], parts[1]);
+                              }
+                            },
+                            itemBuilder: (context) => [
+                              if (isPremium)
+                                const PopupMenuItem(value: 'remove', child: Text('Remover Premium', style: TextStyle(color: Colors.orange)))
+                              else ...[
+                                const PopupMenuItem(enabled: false, child: Text('Asignar plan', style: TextStyle(color: Colors.grey, fontSize: 12))),
+                                ..._plans.expand((plan) => _durations.map((duration) => PopupMenuItem(value: '$plan|$duration', child: Text('$plan - $duration')))),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('CERRAR')),
+      ],
     );
   }
 }
