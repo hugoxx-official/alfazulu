@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_provider.dart';
 import 'admin_screen.dart';
+import 'downloads_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -193,7 +194,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: Text('DESCARGAS', style: GoogleFonts.orbitron(color: Colors.white, letterSpacing: 1)),
                   subtitle: const Text('Ver archivos descargados'),
                   onTap: () {
-                    // Navegar a descargas - TODO: implementar pantalla de descargas
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const DownloadsScreen()),
+                    );
                   },
                 ),
                 const Divider(color: Color(0xFF222222)),
