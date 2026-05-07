@@ -20,6 +20,20 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
 
+  <!-- Content Security Policy para Flutter Web -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self' data: blob: https: http:;
+    script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' https: http:;
+    style-src 'self' 'unsafe-inline' https:;
+    img-src 'self' data: https: http: blob:;
+    font-src 'self' data: https:;
+    connect-src 'self' https: http:;
+    media-src 'self' https: http:;
+    object-src 'self' data:;
+    frame-src 'self' https: http:;
+    worker-src 'self' blob:;
+  ">
+
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
