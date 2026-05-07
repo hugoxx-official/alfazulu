@@ -241,6 +241,12 @@ class _AdminScreenState extends State<AdminScreen> {
               subtitle: 'Gestionar planes premium',
               onTap: () => _showPremiumManager(context),
             ),
+            _AdminGridItem(
+              icon: Icons.notifications_active,
+              title: 'ENVIAR NOTIFICACIÓN',
+              subtitle: 'Notificar a todos los usuarios',
+              onTap: () => _showSendNotificationDialog(context),
+            ),
             const SizedBox(height: 24),
             Card(
               color: const Color(0xFF0A0A0A),
@@ -322,6 +328,119 @@ class _AdminScreenState extends State<AdminScreen> {
 
   Future<void> _showPremiumManager(BuildContext context) async {
     await showDialog(context: context, builder: (_) => const _PremiumManagerDialog());
+  }
+
+  void _showSendNotificationDialog(BuildContext context) {
+    final titleController = TextEditingController();
+    final messageController = TextEditingController();
+    String selectedType = 'info';
+
+    showDialog(
+      context: context,
+      builder: (_) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF0A0A0A),
+          title: Text('ENVIAR NOTIFICACIÓN', style: GoogleFonts.orbitron(color: Colors.red)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Título',
+                    labelStyle: const TextStyle(color: Colors.grey),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.red),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: messageController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Mensaje',
+                    labelStyle: const TextStyle(color: Colors.grey),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.red),
+                    ),
+                  ),
+                  maxLines: 3,
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: selectedType,
+                  dropdownColor: const Color(0xFF0A0A0A),
+                  decoration: InputDecoration(
+                    labelText: 'Tipo',
+                    labelStyle: const TextStyle(color: Colors.grey),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  style: const TextStyle(color: Colors.white),
+                  items: const [
+                    DropdownMenuItem(value: 'info', child: Text('Información')),
+                    DropdownMenuItem(value: 'premium', child: Text('Premium')),
+                    DropdownMenuItem(value: 'upload', child: Text('Nuevo Contenido')),
+                    DropdownMenuItem(value: 'admin', child: Text('Administrador')),
+                  ],
+                  onChanged: (v) => setDialogState(() => selectedType = v!),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('CANCELAR'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(context);
+                try {
+                  final response = await http.post(
+                    Uri.parse('${AppProvider.apiUrl}/admin/notify-all'),
+                    headers: {'Content-Type': 'application/json'},
+                    body: jsonEncode({
+                      'title': titleController.text,
+                      'message': messageController.text,
+                      'type': selectedType,
+                    }),
+                  );
+
+                  if (response.statusCode == 200) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text('Notificación enviada'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                    }
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              child: const Text('ENVIAR'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 

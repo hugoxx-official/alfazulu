@@ -5,6 +5,7 @@ import '../providers/app_provider.dart';
 import '../widgets/resource_card.dart';
 import '../widgets/user_dialog.dart';
 import '../widgets/add_resource_dialog.dart';
+import 'notifications_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -75,6 +76,18 @@ class _HomeScreenState extends State<HomeScreen>
                   )
                 ])),
         actions: [
+          // Botón de notificaciones
+          Consumer<AppProvider>(builder: (context, provider, _) {
+            if (provider.currentUser == null) return const SizedBox.shrink();
+            return StreamBuilder(
+              stream: Stream.periodic(const Duration(seconds: 30), (_) => 0),
+              builder: (context, snapshot) {
+                // Polling cada 30s para actualizar badge de notificaciones
+                return _NotificationButton(provider: provider);
+              },
+            );
+          }),
+          const SizedBox(width: 8),
           Consumer<AppProvider>(builder: (context, provider, _) {
             if (provider.currentUser != null) {
               final isPremium = provider.currentUser!.isPremium;
@@ -535,6 +548,90 @@ class _HomeScreenState extends State<HomeScreen>
         border: Border.all(color: color, width: 1),
       ),
       child: Icon(icon, size: 14, color: color),
+    );
+  }
+}
+
+class _NotificationButton extends StatefulWidget {
+  final AppProvider provider;
+  const _NotificationButton({required this.provider});
+
+  @override
+  State<_NotificationButton> createState() => _NotificationButtonState();
+}
+
+class _NotificationButtonState extends State<_NotificationButton> {
+  int _unreadCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final userId = widget.provider.currentUser?.id;
+      if (userId == null) return;
+
+      final response = await http.get(
+        Uri.parse('${AppProvider.apiUrl}/notifications?user_id=$userId&unread_only=true&limit=100'),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() {
+          _unreadCount = (data['notifications'] as List?)?.length ?? 0;
+        });
+      }
+    } catch (e) {
+      // Silent error
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        IconButton(
+          icon: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.red.withOpacity(0.5)),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Icon(Icons.notifications_none, size: 20, color: Colors.red),
+          ),
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+            ).then((_) => _loadUnreadCount());
+          },
+        ),
+        if (_unreadCount > 0)
+          Positioned(
+            right: 4,
+            top: 4,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+              constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+              child: Text(
+                _unreadCount > 99 ? '99+' : _unreadCount.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
