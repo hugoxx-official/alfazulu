@@ -195,6 +195,42 @@ class _ResourceCardState extends State<ResourceCard>
                   ),
                 ),
               ),
+              // Badge Premium
+              if (widget.resource.isPremium)
+                Positioned(
+                  bottom: 10,
+                  right: 10,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(colors: [Colors.amber, Colors.orange]),
+                      borderRadius: BorderRadius.circular(6),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.amber.withOpacity(0.5),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.workspace_premium, size: 12, color: Colors.black),
+                        const SizedBox(width: 4),
+                        Text(
+                          'PREMIUM',
+                          style: GoogleFonts.orbitron(
+                            fontSize: 8,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
         );
@@ -579,6 +615,15 @@ class _ResourceCardState extends State<ResourceCard>
   }
 
   Future<void> _downloadResource(BuildContext context) async {
+    // Verificar si el recurso es premium y el usuario no es premium
+    final provider = context.read<AppProvider>();
+    final isUserPremium = provider.currentUser?.isPremium ?? false;
+
+    if (widget.resource.isPremium && !isUserPremium) {
+      _showPremiumRequiredDialog(context);
+      return;
+    }
+
     setState(() => _isDownloading = true);
 
     final result =
@@ -623,6 +668,57 @@ class _ResourceCardState extends State<ResourceCard>
         );
       }
     }
+  }
+
+  void _showPremiumRequiredDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0A0A0A),
+        title: Text('RECURSO PREMIUM', style: GoogleFonts.orbitron(color: Colors.amber)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.workspace_premium, size: 64, color: Colors.amber),
+            const SizedBox(height: 16),
+            const Text(
+              'Este recurso es exclusivo para usuarios PREMIUM',
+              style: TextStyle(color: Colors.white, fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              widget.resource.name,
+              style: GoogleFonts.orbitron(color: Colors.red, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Suscríbete para acceder a todo el contenido premium',
+              style: TextStyle(color: Colors.grey, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCELAR'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              Navigator.pushNamed(context, '/premium');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.amber,
+              foregroundColor: Colors.black,
+            ),
+            child: const Text('VER PLANES'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _openUrl(BuildContext context) async {

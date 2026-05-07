@@ -9,6 +9,7 @@ class Resource {
   final String? thumbnailUrl;
   final String? downloadUrl;
   final int downloadCount;
+  final bool isPremium;
   final DateTime createdAt;
 
   Resource({
@@ -22,13 +23,14 @@ class Resource {
     this.thumbnailUrl,
     this.downloadUrl,
     this.downloadCount = 0,
+    this.isPremium = false,
     required this.createdAt,
   });
 
   factory Resource.fromJson(Map<String, dynamic> json) {
     return Resource(
       id: json['id'] ?? '',
-      name: json['name'] ?? '',
+      name: json['title'] ?? json['name'] ?? '',
       description: json['description'],
       category: json['category'] ?? 'documentacion',
       fileType: json['file_type'] ?? 'pdf',
@@ -37,6 +39,7 @@ class Resource {
       thumbnailUrl: json['thumbnail_url'],
       downloadUrl: json['download_url'],
       downloadCount: json['download_count'] ?? 0,
+      isPremium: json['is_premium'] ?? false,
       createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
     );
   }

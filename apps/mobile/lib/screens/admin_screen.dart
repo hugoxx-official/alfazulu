@@ -403,11 +403,12 @@ class _DataManagerScreenState extends State<DataManagerScreen> {
                   itemCount: _items.length,
                   itemBuilder: (_, i) {
                     final item = _items[i];
+                    final displayName = item['title'] ?? item['name'] ?? 'Sin nombre';
                     return Card(
                       color: const Color(0xFF0A0A0A),
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: ListTile(
-                        title: Text(item['name'] ?? 'Sin nombre', style: GoogleFonts.orbitron(color: Colors.white)),
+                        title: Text(displayName, style: GoogleFonts.orbitron(color: Colors.white)),
                         subtitle: Text(
                           widget.type == DataManagerType.resources
                               ? item['category'] ?? 'Sin categoría'
@@ -458,6 +459,7 @@ class _ResourceFormDialogState extends State<_ResourceFormDialog> {
   String _category = 'DOCUMENTATION';
   String _fileType = 'PDF';
   int _fileSize = 0;
+  bool _isPremium = false;
   dynamic _pickedFile; // Usar dynamic para evitar import de PlatformFile en web
   bool _isUploading = false;
   List<String> _categories = ['MAPS', 'TCCC', 'TRANSMISSIONS', 'MANUALS', 'DOCUMENTATION'];
@@ -468,12 +470,13 @@ class _ResourceFormDialogState extends State<_ResourceFormDialog> {
     super.initState();
     _loadCategories();
     if (widget.resource != null) {
-      _nameController.text = widget.resource['name'] ?? '';
+      _nameController.text = widget.resource['title'] ?? widget.resource['name'] ?? '';
       _descController.text = widget.resource['description'] ?? '';
       _urlController.text = widget.resource['download_url'] ?? '';
       _category = widget.resource['category'] ?? 'DOCUMENTATION';
       _fileType = widget.resource['file_type'] ?? 'PDF';
       _fileSize = widget.resource['file_size'] ?? 0;
+      _isPremium = widget.resource['is_premium'] ?? false;
     }
   }
 
@@ -509,13 +512,14 @@ class _ResourceFormDialogState extends State<_ResourceFormDialog> {
       // Web: solo URL, mobile puede usar file picker
       if (kIsWeb || _pickedFile == null) {
         final body = {
-          'name': _nameController.text,
+          'title': _nameController.text,
           'description': _descController.text,
           'category': _category,
           'file_type': _fileType,
           'file_size': _fileSize,
           'download_url': _urlController.text,
           'thumbnail_url': '',
+          'is_premium': _isPremium,
         };
 
         if (widget.resource != null) {
@@ -639,6 +643,53 @@ class _ResourceFormDialogState extends State<_ResourceFormDialog> {
                     borderRadius: BorderRadius.circular(8),
                     borderSide: const BorderSide(color: Colors.red),
                   ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Switch Premium
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _isPremium ? Colors.amber.withOpacity(0.1) : const Color(0xFF1A1A1A),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: _isPremium ? Colors.amber : Colors.grey[800]!,
+                    width: 2,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.workspace_premium,
+                      color: _isPremium ? Colors.amber : Colors.grey,
+                      size: 28,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'RECURSO PREMIUM',
+                            style: GoogleFonts.orbitron(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: _isPremium ? Colors.amber : Colors.grey[500],
+                            ),
+                          ),
+                          Text(
+                            'Solo usuarios premium pueden descargar',
+                            style: TextStyle(color: Colors.grey[600], fontSize: 10),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: _isPremium,
+                      onChanged: (v) => setState(() => _isPremium = v),
+                      activeColor: Colors.amber,
+                    ),
+                  ],
                 ),
               ),
             ],
