@@ -16,14 +16,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen>
     with SingleTickerProviderStateMixin {
   String _selectedCategory = 'Todos';
-  final List<String> _categories = [
-    'Todos',
-    'MAPS',
-    'TCCC',
-    'TRANSMISSIONS',
-    'MANUALS',
-    'DOCUMENTATION'
-  ];
+  List<String> _categories = ['Todos'];
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
@@ -38,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    // Cargar recursos cuando el usuario esté disponible
+    // Cargar recursos y categorías cuando el usuario esté disponible
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final p = context.read<AppProvider>();
       // Escuchar cambios primero ANTES de verificar estado actual
@@ -46,10 +39,17 @@ class _HomeScreenState extends State<HomeScreen>
         if (p.currentUser != null && p.resources.isEmpty && !p.isLoading) {
           p.loadResources();
         }
+        // Actualizar categorías cuando se carguen
+        if (p.categories.isNotEmpty) {
+          setState(() {
+            _categories = ['Todos', ...p.categories];
+          });
+        }
       });
-      // Cargar recursos solo si ya hay usuario cargado
+      // Cargar recursos y categorías solo si ya hay usuario cargado
       if (p.currentUser != null) {
         p.loadResources();
+        p.loadCategories();
       }
     });
   }

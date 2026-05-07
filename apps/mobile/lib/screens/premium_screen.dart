@@ -391,7 +391,19 @@ class _PremiumScreenState extends State<PremiumScreen>
   Widget _buildPlanCard(Map<String, dynamic> plan, bool isTablet, bool isPremium) {
     final planName = plan['plan_name'] ?? '';
     final displayName = plan['display_name'] ?? 'Unknown';
-    final price = plan['price'] ?? '';
+    final priceMonthly = plan['price_monthly'] ?? '0';
+    final priceLifetime = plan['price_lifetime'] ?? '0';
+
+    // Mostrar precio según el tipo de pago seleccionado
+    String displayPrice;
+    if (_selectedPaymentType == 'vitalicio') {
+      final price = priceLifetime == '0' ? 'Gratis' : '\$${priceLifetime} (pago único)';
+      displayPrice = price;
+    } else {
+      final price = priceMonthly == '0' ? 'Gratis' : '\$${priceMonthly}/mes';
+      displayPrice = price;
+    }
+
     final color = plan['color'] ?? '#666666';
     final features = (plan['features'] as List?)?.map((e) => e.toString()).toList() ?? [];
     final limitations = (plan['limitations'] as List?)?.map((e) => e.toString()).toList() ?? [];
@@ -431,7 +443,7 @@ class _PremiumScreenState extends State<PremiumScreen>
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      price,
+                      displayPrice,
                       style: GoogleFonts.orbitron(
                         fontSize: isTablet ? 28 : 22,
                         fontWeight: FontWeight.w900,

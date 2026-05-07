@@ -9,7 +9,6 @@ class Resource {
   final String? thumbnailUrl;
   final String? downloadUrl;
   final int downloadCount;
-  final bool isFavorite;
   final DateTime createdAt;
 
   Resource({
@@ -23,7 +22,6 @@ class Resource {
     this.thumbnailUrl,
     this.downloadUrl,
     this.downloadCount = 0,
-    this.isFavorite = false,
     required this.createdAt,
   });
 
@@ -39,8 +37,7 @@ class Resource {
       thumbnailUrl: json['thumbnail_url'],
       downloadUrl: json['download_url'],
       downloadCount: json['download_count'] ?? 0,
-      isFavorite: json['is_favorite'] ?? false,
-      createdAt: DateTime.parse(json['created_at']),
+      createdAt: DateTime.tryParse(json['created_at']?.toString() ?? '') ?? DateTime.now(),
     );
   }
 

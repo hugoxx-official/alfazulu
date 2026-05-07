@@ -298,34 +298,6 @@ class _ResourceCardState extends State<ResourceCard>
                 ),
               ),
               const Spacer(),
-              // Favoritos
-              GestureDetector(
-                onTap: () => context
-                    .read<AppProvider>()
-                    .toggleFavorite(widget.resource.id, !widget.resource.isFavorite),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: widget.resource.isFavorite
-                        ? Colors.red.withOpacity(0.2)
-                        : Colors.transparent,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: widget.resource.isFavorite
-                          ? Colors.red
-                          : Colors.grey[800]!,
-                      width: 1,
-                    ),
-                  ),
-                  child: Icon(
-                    widget.resource.isFavorite ? Icons.star : Icons.star_outline,
-                    size: 16,
-                    color: widget.resource.isFavorite ? Colors.red : Colors.grey[600],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
               // Botón descarga
               GestureDetector(
                 onTap: _isDownloading ? null : () => _downloadResource(context),
@@ -475,24 +447,6 @@ class _ResourceCardState extends State<ResourceCard>
               onTap: () {
                 Navigator.pop(context);
                 _downloadResource(context);
-              },
-            ),
-            ListTile(
-              leading: Icon(
-                widget.resource.isFavorite ? Icons.star : Icons.star_outline,
-                color: Colors.red,
-              ),
-              title: Text(
-                widget.resource.isFavorite
-                    ? 'Quitar de favoritos'
-                    : 'Agregar a favoritos',
-                style: GoogleFonts.orbitron(color: Colors.white),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                context
-                    .read<AppProvider>()
-                    .toggleFavorite(widget.resource.id, !widget.resource.isFavorite);
               },
             ),
             const SizedBox(height: 20),

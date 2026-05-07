@@ -57,7 +57,6 @@ class AppProvider extends ChangeNotifier {
         _currentUser = User(
           id: userId,
           username: username,
-          favorites: prefs.getStringList('favorites') ?? [],
           isPremium: prefs.getBool('is_premium') ?? false,
           premiumPlan: prefs.getString('premium_plan'),
           subscriptionEnd: prefs.getString('subscription_end') != null
@@ -65,6 +64,11 @@ class AppProvider extends ChangeNotifier {
             : null,
         );
         print('Sesión cargada exitosamente: ${_currentUser!.username} (Premium: ${_currentUser!.isPremium})');
+
+        // Refrescar datos desde el backend para obtener plan actualizado
+        refreshUser().then((_) {
+          print('Usuario refrescado desde backend');
+        });
       } else {
         print('No hay sesión guardada');
       }
@@ -90,6 +94,35 @@ class AppProvider extends ChangeNotifier {
       return userId != null && username != null;
     } catch (e) {
       return false;
+    }
+  }
+
+  // Refrescar datos del usuario desde el backend
+  Future<void> refreshUser() async {
+    if (_currentUser == null) return;
+    try {
+      final response = await http.get(
+        Uri.parse('$apiUrl/users/${_currentUser!.id}'),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        final user = User.fromJson(data['user']);
+        _currentUser = user;
+
+        // Actualizar SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('is_premium', user.isPremium);
+        if (user.premiumPlan != null) {
+          await prefs.setString('premium_plan', user.premiumPlan!);
+        }
+        if (user.subscriptionEnd != null) {
+          await prefs.setString('subscription_end', user.subscriptionEnd!.toIso8601String());
+        }
+
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error refrescando usuario: $e');
     }
   }
 
@@ -132,7 +165,6 @@ class AppProvider extends ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('user_id', _currentUser!.id);
         await prefs.setString('username', _currentUser!.username);
-        await prefs.setStringList('favorites', _currentUser!.favorites);
         await prefs.setBool('app_initialized', true);
         await prefs.setBool('is_premium', _currentUser!.isPremium);
         if (_currentUser!.premiumPlan != null) {
@@ -233,54 +265,6 @@ class AppProvider extends ChangeNotifier {
       }
     } catch (e) {
       // Error loading categories
-    }
-  }
-
-  // Toggle favorito
-  Future<void> toggleFavorite(String resourceId, bool isFavorite) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$apiUrl/resources/$resourceId/favorite'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'user_id': _currentUser?.id}),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        // Actualizar favoritos del usuario actual
-        if (_currentUser != null && data['favorites'] != null) {
-          _currentUser = User(
-            id: _currentUser!.id,
-            username: _currentUser!.username,
-            favorites: List<String>.from(data['favorites']),
-            isPremium: _currentUser!.isPremium,
-            premiumPlan: _currentUser!.premiumPlan,
-            subscriptionEnd: _currentUser!.subscriptionEnd,
-          );
-          notifyListeners();
-        }
-      }
-    } catch (e) {
-      _error = 'Error: $e';
-      notifyListeners();
-    }
-  }
-
-  // Cargar favoritos del usuario
-  Future<void> loadFavorites() async {
-    if (_currentUser == null) return;
-    try {
-      final response = await http.get(
-        Uri.parse('$apiUrl/resources/favorites/${_currentUser!.id}'),
-      );
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        // Actualizar lista de recursos con favoritos
-        // (opcional: filtrar o marcar favoritos)
-      }
-    } catch (e) {
-      _error = 'Error: $e';
-      notifyListeners();
     }
   }
 

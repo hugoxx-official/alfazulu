@@ -1,7 +1,6 @@
 class User {
   final String id;
   final String username;
-  final List<String> favorites;
   final bool isPremium;
   final String? premiumPlan;
   final DateTime? subscriptionEnd;
@@ -9,7 +8,6 @@ class User {
   User({
     required this.id,
     required this.username,
-    this.favorites = const [],
     this.isPremium = false,
     this.premiumPlan,
     this.subscriptionEnd,
@@ -29,7 +27,6 @@ class User {
     return User(
       id: json['id'] ?? '',
       username: json['username'] ?? '',
-      favorites: json['favorites'] != null ? List<String>.from(json['favorites']) : [],
       isPremium: json['is_premium'] ?? false,
       premiumPlan: json['premium_plan'],
       subscriptionEnd: subEnd,

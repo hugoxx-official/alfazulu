@@ -325,22 +325,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Gestión de recursos militares', style: TextStyle(color: Colors.white)),
-            const SizedBox(height: 16),
-            Text('Versión: 1.0.0', style: TextStyle(color: Colors.grey[600])),
-            const SizedBox(height: 8),
-            Text('Admin: admin / 1936', style: TextStyle(color: Colors.grey[600])),
-            const SizedBox(height: 16),
-            ElevatedButton.icon(
-              onPressed: () async {
-                final uri = Uri.parse('https://github.com');
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                }
-              },
-              icon: const Icon(Icons.code),
-              label: const Text('GitHub'),
+            const Text('Sistema profesional de gestión de recursos militares', style: TextStyle(color: Colors.white)),
+            const SizedBox(height: 12),
+            const Text(
+              'AlfaZulu proporciona una plataforma segura y eficiente para la distribución y control de recursos tácticos, con soporte para planes premium y gestión administrativa.',
+              style: TextStyle(color: Colors.white70, fontSize: 12),
             ),
+            const SizedBox(height: 16),
+            _buildInfoRow('Versión', '1.0.0'),
+            _buildInfoRow('Backend', 'Railway'),
+            _buildInfoRow('Database', 'Supabase'),
+            const SizedBox(height: 16),
+            Text('© 2026 AlfaZulu. Todos los derechos reservados.', style: TextStyle(color: Colors.grey[700], fontSize: 10)),
           ],
         ),
         actions: [
@@ -348,6 +344,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onPressed: () => Navigator.pop(context),
             child: const Text('CERRAR'),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(color: Colors.grey[600], fontSize: 11)),
+          Text(value, style: GoogleFonts.orbitron(color: Colors.white, fontSize: 11)),
         ],
       ),
     );
