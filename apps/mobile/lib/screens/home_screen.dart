@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import '../providers/app_provider.dart';
 import '../widgets/resource_card.dart';
 import '../widgets/user_dialog.dart';
@@ -579,7 +581,7 @@ class _NotificationButtonState extends State<_NotificationButton> {
       );
 
       if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
+        final data = json.decode(response.body);
         setState(() {
           _unreadCount = (data['notifications'] as List?)?.length ?? 0;
         });

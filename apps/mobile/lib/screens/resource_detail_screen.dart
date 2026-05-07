@@ -125,14 +125,6 @@ class ResourceDetailScreen extends StatelessWidget {
                 icon: Icons.storage,
                 label: resource.formattedSize,
               ),
-              const SizedBox(width: 8),
-              if (resource.isFavorite)
-                _buildInfoChip(
-                  context,
-                  icon: Icons.star,
-                  label: 'Favorito',
-                  color: Theme.of(context).primaryColor,
-                ),
             ],
           ),
         ],
@@ -196,30 +188,6 @@ class ResourceDetailScreen extends StatelessWidget {
               label: const Text('Abrir'),
               style: OutlinedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 16),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          GestureDetector(
-            onTap: () => context.read<AppProvider>().toggleFavorite(resource.id, !resource.isFavorite),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: resource.isFavorite
-                    ? Theme.of(context).primaryColor.withOpacity(0.2)
-                    : const Color(0xFF1A1A1A),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: resource.isFavorite
-                      ? Theme.of(context).primaryColor
-                      : const Color(0xFF1A1A1A),
-                ),
-              ),
-              child: Icon(
-                resource.isFavorite ? Icons.star : Icons.star_outline,
-                color: resource.isFavorite
-                    ? Theme.of(context).primaryColor
-                    : Colors.grey[600],
               ),
             ),
           ),

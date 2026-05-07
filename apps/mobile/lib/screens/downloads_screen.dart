@@ -74,7 +74,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.download_off, size: 80, color: Colors.grey[700]),
+          Icon(Icons.inbox_outlined, size: 80, color: Colors.grey[700]),
           const SizedBox(height: 24),
           Text(
             'NO HAY DESCARGAS',
@@ -185,7 +185,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       if (url != null) {
         final uri = Uri.parse(url);
         if (await canLaunchUrl(uri)) {
-          await launchUrl(uri, mode: LaunchMode.download);
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
         }
       }
     }

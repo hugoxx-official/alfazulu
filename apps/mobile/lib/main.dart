@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import 'providers/app_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/maps_screen.dart';
-import 'screens/favorites_screen.dart';
+import 'screens/downloads_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/tgcf_screen.dart';
 import 'screens/premium_screen.dart';
@@ -270,7 +270,7 @@ class _MainNavigationState extends State<MainNavigation>
       case 0: return const HomeScreen();
       case 1: return const MapsScreen();
       case 2: return const TGCFScreen();
-      case 3: return const FavoritesScreen();
+      case 3: return const DownloadsScreen();
       case 4: return const PremiumScreen();
       case 5: return const SettingsScreen();
       default: return const HomeScreen();
@@ -308,8 +308,8 @@ class _MainNavigationState extends State<MainNavigation>
                 label: 'TGCF',
               ),
               NavigationDestination(
-                icon: Icon(Icons.star_outline),
-                label: 'Favoritos',
+                icon: Icon(Icons.download_outlined),
+                label: 'Descargas',
               ),
               NavigationDestination(
                 icon: Icon(Icons.workspace_premium_outlined),
