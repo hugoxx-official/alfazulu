@@ -88,13 +88,17 @@ class _SplashScreenState extends State<SplashScreen>
       // Navegar después de la animación (sin password dialog - acceso abierto)
       await Future.delayed(const Duration(milliseconds: 2500));
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            pageBuilder: (_, __, ___) => MainNavigation(hasSession: _hasSession),
-            transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
-            transitionDuration: const Duration(milliseconds: 500),
-          ),
-        );
+        try {
+          Navigator.of(context).pushReplacement(
+            PageRouteBuilder(
+              pageBuilder: (_, __, ___) => MainNavigation(hasSession: _hasSession),
+              transitionsBuilder: (_, a, __, c) => FadeTransition(opacity: a, child: c),
+              transitionDuration: const Duration(milliseconds: 500),
+            ),
+          );
+        } catch (e) {
+          print('Error navegando: $e');
+        }
       }
     });
   }
