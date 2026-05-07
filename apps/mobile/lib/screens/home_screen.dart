@@ -41,16 +41,16 @@ class _HomeScreenState extends State<HomeScreen>
     // Cargar recursos cuando el usuario esté disponible
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final p = context.read<AppProvider>();
-      // Cargar recursos siempre que haya usuario (puede venir de sesión guardada)
-      if (p.currentUser != null) {
-        p.loadResources();
-      }
-      // Escuchar cambios en el usuario para cargar recursos cuando se loguee
+      // Escuchar cambios primero ANTES de verificar estado actual
       p.addListener(() {
-        if (p.currentUser != null && p.resources.isEmpty) {
+        if (p.currentUser != null && p.resources.isEmpty && !p.isLoading) {
           p.loadResources();
         }
       });
+      // Cargar recursos solo si ya hay usuario cargado
+      if (p.currentUser != null) {
+        p.loadResources();
+      }
     });
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -34,7 +35,19 @@ class AppProvider extends ChangeNotifier {
     if (_hasLoadedInitialSession) return _currentUser != null;
 
     try {
-      final prefs = await SharedPreferences.getInstance();
+      // Timeout para evitar freeze si SharedPreferences falla
+      SharedPreferences? prefs;
+      try {
+        prefs = await SharedPreferences.getInstance().timeout(
+          const Duration(seconds: 5),
+        );
+      } on TimeoutException {
+        print('Timeout cargando SharedPreferences');
+        _hasLoadedInitialSession = true;
+        notifyListeners();
+        return false;
+      }
+
       final userId = prefs.getString('user_id');
       final username = prefs.getString('username');
 

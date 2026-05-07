@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
-import '../providers/app_provider.dart';
+import '../utils/tgcf_tables.dart';
 
 class TGCFScreen extends StatefulWidget {
   const TGCFScreen({super.key});
@@ -14,19 +13,22 @@ class _TGCFScreenState extends State<TGCFScreen>
     with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
 
-  // Campos del TGCF
   final _pushupsController = TextEditingController();
   final _situpsController = TextEditingController();
-  final _pullupsController = TextEditingController();
-  final _squatsController = TextEditingController();
-  final _shuttleRunController = TextEditingController();
+  final _cavController = TextEditingController();
+  final _run6000Controller = TextEditingController();
 
-  String _gender = 'male';
-  int? _age;
+  String _gender = 'M';
+  int _ageGroupIndex = 0; // 17-21
   Map<String, dynamic>? _result;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+
+  final List<String> _ageGroups = [
+    '17-21', '22-26', '27-31', '32-36', '37-41',
+    '42-46', '47-51', '52-56', '57-61', '62+'
+  ];
 
   @override
   void initState() {
@@ -44,9 +46,8 @@ class _TGCFScreenState extends State<TGCFScreen>
   void dispose() {
     _pushupsController.dispose();
     _situpsController.dispose();
-    _pullupsController.dispose();
-    _squatsController.dispose();
-    _shuttleRunController.dispose();
+    _cavController.dispose();
+    _run6000Controller.dispose();
     _pulseController.dispose();
     super.dispose();
   }
@@ -55,56 +56,51 @@ class _TGCFScreenState extends State<TGCFScreen>
     if (!_formKey.currentState!.validate()) return;
 
     try {
-      final pushups = int.parse(_pushupsController.text);
-      final situps = int.parse(_situpsController.text);
-      final pullups = int.parse(_pullupsController.text);
-      final squats = int.parse(_squatsController.text);
-      final shuttleRun = double.parse(_shuttleRunController.text.replaceAll(',', '.'));
+      final pushups = int.tryParse(_pushupsController.text) ?? 0;
+      final situps = int.tryParse(_situpsController.text) ?? 0;
+      final cavTime = double.tryParse(_cavController.text.replaceAll(',', '.')) ?? 99.9;
 
-      // Puntuación TGCF (baremo militar aproximado)
-      final pushupsScore = _scorePushups(pushups, _gender, _age);
-      final situpsScore = _scoreSitups(situps, _gender, _age);
-      final pullupsScore = _scorePullups(pullups, _gender);
-      final squatsScore = _scoreSquats(squats, _gender, _age);
-      final shuttleRunScore = _scoreShuttleRun(shuttleRun, _gender, _age);
-
-      final totalScore = pushupsScore + situpsScore + pullupsScore + squatsScore + shuttleRunScore;
-      final maxScore = 50;
-      final percentage = (totalScore / maxScore * 100).clamp(0, 100);
-
-      String level;
-      Color levelColor;
-      if (percentage >= 90) {
-        level = 'EXCELENTE';
-        levelColor = Colors.green;
-      } else if (percentage >= 75) {
-        level = 'BUENO';
-        levelColor = Colors.lightGreen;
-      } else if (percentage >= 60) {
-        level = 'REGULAR';
-        levelColor = Colors.orange;
-      } else if (percentage >= 40) {
-        level = 'DEFICIENTE';
-        levelColor = Colors.orangeAccent;
+      // Parsear tiempo 6000m (formato MM:SS o solo segundos)
+      int runSeconds = 999;
+      final runText = _run6000Controller.text.trim();
+      if (runText.contains(':')) {
+        final parts = runText.split(':');
+        final mins = int.tryParse(parts[0]) ?? 0;
+        final secs = int.tryParse(parts[1]) ?? 0;
+        runSeconds = mins * 60 + secs;
       } else {
-        level = 'MUY DEFICIENTE';
-        levelColor = Colors.red;
+        runSeconds = int.tryParse(runText) ?? 999;
+      }
+
+      // Calcular puntos usando tablas oficiales
+      final result = TGCFTables.calculateTotal(
+        pushups: pushups,
+        situps: situps,
+        cavTime: cavTime,
+        run6000Seconds: runSeconds,
+        ageGroupIndex: _ageGroupIndex,
+        sex: _gender,
+      );
+
+      // Determinar color según nivel
+      Color levelColor;
+      switch (result['level']) {
+        case 'EXCELENTE': levelColor = Colors.green; break;
+        case 'MUY BUENO': levelColor = Colors.lightGreen; break;
+        case 'BUENO': levelColor = Colors.orange; break;
+        case 'REGULAR': levelColor = Colors.orangeAccent; break;
+        default: levelColor = Colors.red;
       }
 
       setState(() {
         _result = {
-          'total': totalScore,
-          'max': maxScore,
-          'percentage': percentage,
-          'level': level,
+          'total': result['total'],
+          'max': result['max'],
+          'percentage': result['percentage'],
+          'level': result['level'],
           'levelColor': levelColor,
-          'details': {
-            'Flexiones': {'value': pushups, 'score': pushupsScore},
-            'Abdominales': {'value': situps, 'score': situpsScore},
-            'Dominadas': {'value': pullups, 'score': pullupsScore},
-            'Sentadillas': {'value': squats, 'score': squatsScore},
-            'Shuttle Run': {'value': shuttleRun, 'score': shuttleRunScore},
-          },
+          'message': result['message'],
+          'details': result['details'],
         };
       });
     } catch (e) {
@@ -117,96 +113,6 @@ class _TGCFScreenState extends State<TGCFScreen>
     }
   }
 
-  int _scorePushups(int reps, String gender, int? age) {
-    if (gender == 'male') {
-      if (reps >= 50) return 10;
-      if (reps >= 40) return 8;
-      if (reps >= 30) return 6;
-      if (reps >= 20) return 4;
-      if (reps >= 10) return 2;
-      return 1;
-    } else {
-      if (reps >= 40) return 10;
-      if (reps >= 30) return 8;
-      if (reps >= 20) return 6;
-      if (reps >= 15) return 4;
-      if (reps >= 10) return 2;
-      return 1;
-    }
-  }
-
-  int _scoreSitups(int reps, String gender, int? age) {
-    if (gender == 'male') {
-      if (reps >= 60) return 10;
-      if (reps >= 50) return 8;
-      if (reps >= 40) return 6;
-      if (reps >= 30) return 4;
-      if (reps >= 20) return 2;
-      return 1;
-    } else {
-      if (reps >= 50) return 10;
-      if (reps >= 40) return 8;
-      if (reps >= 30) return 6;
-      if (reps >= 20) return 4;
-      if (reps >= 15) return 2;
-      return 1;
-    }
-  }
-
-  int _scorePullups(int reps, String gender) {
-    if (gender == 'male') {
-      if (reps >= 15) return 10;
-      if (reps >= 12) return 8;
-      if (reps >= 8) return 6;
-      if (reps >= 5) return 4;
-      if (reps >= 3) return 2;
-      return 1;
-    } else {
-      if (reps >= 10) return 10;
-      if (reps >= 8) return 8;
-      if (reps >= 5) return 6;
-      if (reps >= 3) return 4;
-      if (reps >= 1) return 2;
-      return 1;
-    }
-  }
-
-  int _scoreSquats(int reps, String gender, int? age) {
-    if (gender == 'male') {
-      if (reps >= 60) return 10;
-      if (reps >= 50) return 8;
-      if (reps >= 40) return 6;
-      if (reps >= 30) return 4;
-      if (reps >= 20) return 2;
-      return 1;
-    } else {
-      if (reps >= 50) return 10;
-      if (reps >= 40) return 8;
-      if (reps >= 30) return 6;
-      if (reps >= 20) return 4;
-      if (reps >= 15) return 2;
-      return 1;
-    }
-  }
-
-  int _scoreShuttleRun(double time, String gender, int? age) {
-    // Tiempo en segundos (ej: 20.5 = 20.5 segundos)
-    if (gender == 'male') {
-      if (time <= 18) return 10;
-      if (time <= 20) return 8;
-      if (time <= 22) return 6;
-      if (time <= 25) return 4;
-      if (time <= 28) return 2;
-      return 1;
-    } else {
-      if (time <= 20) return 10;
-      if (time <= 22) return 8;
-      if (time <= 24) return 6;
-      if (time <= 27) return 4;
-      if (time <= 30) return 2;
-      return 1;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -270,7 +176,7 @@ class _TGCFScreenState extends State<TGCFScreen>
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Evalúa tu condición física militar',
+                    'Baremo oficial Ejército de Tierra',
                     style: TextStyle(color: Colors.grey[600], fontSize: isTablet ? 14 : 12),
                   ),
                 ],
@@ -278,71 +184,89 @@ class _TGCFScreenState extends State<TGCFScreen>
             ),
             const SizedBox(height: 24),
 
+            // Selector género y edad
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _gender,
+                    dropdownColor: const Color(0xFF0A0A0A),
+                    decoration: InputDecoration(
+                      labelText: 'GÉNERO',
+                      labelStyle: const TextStyle(color: Colors.grey),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Colors.red),
+                      ),
+                    ),
+                    style: const TextStyle(color: Colors.white),
+                    items: const [
+                      DropdownMenuItem(value: 'M', child: Text('Masculino')),
+                      DropdownMenuItem(value: 'F', child: Text('Femenino')),
+                    ],
+                    onChanged: (v) => setState(() => _gender = v!),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    value: _ageGroupIndex,
+                    dropdownColor: const Color(0xFF0A0A0A),
+                    decoration: InputDecoration(
+                      labelText: 'EDAD',
+                      labelStyle: const TextStyle(color: Colors.grey),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: Colors.red),
+                      ),
+                    ),
+                    style: const TextStyle(color: Colors.white),
+                    items: _ageGroups.asMap().entries.map((e) =>
+                      DropdownMenuItem(value: e.key, child: Text('${e.value} años'))
+                    ).toList(),
+                    onChanged: (v) => setState(() => _ageGroupIndex = v!),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+
             // Formulario
             Form(
               key: _formKey,
               child: Column(
                 children: [
-                  // Género y edad
-                  Row(
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: _gender,
-                          dropdownColor: const Color(0xFF0A0A0A),
-                          decoration: InputDecoration(
-                            labelText: 'GÉNERO',
-                            labelStyle: const TextStyle(color: Colors.grey),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: Colors.red),
-                            ),
-                          ),
-                          style: const TextStyle(color: Colors.white),
-                          items: const [
-                            DropdownMenuItem(value: 'male', child: Text('Masculino')),
-                            DropdownMenuItem(value: 'female', child: Text('Femenino')),
-                          ],
-                          onChanged: (v) => setState(() => _gender = v!),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: DropdownButtonFormField<int>(
-                          value: _age ?? 25,
-                          dropdownColor: const Color(0xFF0A0A0A),
-                          decoration: InputDecoration(
-                            labelText: 'EDAD',
-                            labelStyle: const TextStyle(color: Colors.grey),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: Colors.red),
-                            ),
-                          ),
-                          style: const TextStyle(color: Colors.white),
-                          items: List.generate(5, (i) => 20 + i * 5)
-                              .expand((baseAge) => List.generate(5, (j) => baseAge + j))
-                              .map((age) => DropdownMenuItem(value: age, child: Text('$age')))
-                              .toList(),
-                          onChanged: (v) => setState(() => _age = v!),
-                        ),
-                      ),
-                    ],
+                  _buildExerciseField(
+                    'Flexiones de brazos (2 min)',
+                    _pushupsController,
+                    'repeticiones',
+                    Icons.fitness_center,
                   ),
-                  const SizedBox(height: 16),
-
-                  // Ejercicios
-                  _buildExerciseField('Flexiones de brazos', _pushupsController, 'repeticiones'),
                   const SizedBox(height: 12),
-                  _buildExerciseField('Abdominales en 2 min', _situpsController, 'repeticiones'),
+                  _buildExerciseField(
+                    'Abdominales en 2 min',
+                    _situpsController,
+                    'repeticiones',
+                    Icons.self_improvement,
+                  ),
                   const SizedBox(height: 12),
-                  _buildExerciseField('Dominadas', _pullupsController, 'repeticiones'),
+                  _buildExerciseField(
+                    'Circuito CAV (segundos)',
+                    _cavController,
+                    'ej: 15.3',
+                    Icons.timer,
+                    isTime: false,
+                  ),
                   const SizedBox(height: 12),
-                  _buildExerciseField('Sentadillas en 2 min', _squatsController, 'repeticiones'),
-                  const SizedBox(height: 12),
-                  _buildExerciseField('Shuttle Run (segundos)', _shuttleRunController, 'ej: 20.5'),
+                  _buildExerciseField(
+                    'Carrera 6000m (MM:SS)',
+                    _run6000Controller,
+                    'ej: 24:30',
+                    Icons.directions_run,
+                    isTime: true,
+                  ),
                   const SizedBox(height: 20),
 
                   // Botón calcular
@@ -368,22 +292,60 @@ class _TGCFScreenState extends State<TGCFScreen>
               const SizedBox(height: 24),
               _buildResults(isTablet),
             ],
+
+            const SizedBox(height: 32),
+
+            // Info mínimo BRIPAC
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.red.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, color: Colors.red, size: 24),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'MÍNIMO BRIPAC',
+                          style: GoogleFonts.orbitron(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
+                        ),
+                        Text(
+                          'Se requieren 310 puntos mínimos para apto en BRIPAC',
+                          style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildExerciseField(String label, TextEditingController controller, String hint) {
+  Widget _buildExerciseField(String label, TextEditingController controller, String hint, IconData icon, {bool isTime = false}) {
     return TextFormField(
       controller: controller,
       style: const TextStyle(color: Colors.white),
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      keyboardType: isTime ? TextInputType.datetime : const TextInputType.numberWithOptions(decimal: true),
       decoration: InputDecoration(
         labelText: label,
         hintText: hint,
         labelStyle: const TextStyle(color: Colors.grey),
         hintStyle: TextStyle(color: Colors.grey[600]),
+        prefixIcon: Icon(icon, color: Colors.red.withOpacity(0.7)),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -392,7 +354,8 @@ class _TGCFScreenState extends State<TGCFScreen>
       ),
       validator: (v) {
         if (v == null || v.isEmpty) return 'Requerido';
-        if (double.tryParse(v.replaceAll(',', '.')) == null) return 'Número inválido';
+        if (isTime && !v.contains(':') && double.tryParse(v) == null) return 'Formato inválido';
+        if (!isTime && double.tryParse(v.replaceAll(',', '.')) == null) return 'Número inválido';
         return null;
       },
     );
@@ -462,9 +425,18 @@ class _TGCFScreenState extends State<TGCFScreen>
               letterSpacing: 2,
             ),
           ),
+          const SizedBox(height: 8),
+          Text(
+            _result!['message'] as String,
+            style: TextStyle(
+              color: Colors.grey[500],
+              fontSize: isTablet ? 14 : 12,
+            ),
+            textAlign: TextAlign.center,
+          ),
           const SizedBox(height: 20),
 
-          // Detalles por ejercicio
+          // Detalles por prueba
           ...(_result!['details'] as Map<String, dynamic>).entries.map((entry) =>
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
@@ -485,7 +457,7 @@ class _TGCFScreenState extends State<TGCFScreen>
                           border: Border.all(color: Colors.red.withOpacity(0.3)),
                         ),
                         child: Text(
-                          '${entry.value['value']}',
+                          entry.value['value'].toString(),
                           style: GoogleFonts.orbitron(color: Colors.white, fontSize: 12),
                         ),
                       ),
@@ -497,7 +469,7 @@ class _TGCFScreenState extends State<TGCFScreen>
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          '+${entry.value['score']} pts',
+                          '${entry.value['score']}/${entry.value['max']} pts',
                           style: const TextStyle(color: Colors.red, fontSize: 10),
                         ),
                       ),

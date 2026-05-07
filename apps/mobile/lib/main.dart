@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/app_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/maps_screen.dart';
@@ -9,7 +8,6 @@ import 'screens/settings_screen.dart';
 import 'screens/tgcf_screen.dart';
 import 'screens/premium_screen.dart';
 import 'theme/app_theme.dart';
-import 'widgets/password_dialog.dart';
 
 void main() {
   runApp(const AlfaZuluApp());
@@ -46,7 +44,6 @@ class _SplashScreenState extends State<SplashScreen>
   late Animation<double> _scaleAnimation;
   late Animation<double> _glowAnimation;
   bool _hasSession = false;
-  bool _passwordVerified = false;
 
   @override
   void initState() {
@@ -70,28 +67,27 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    // Cargar sesión y verificar contraseña
+    // Cargar sesión con timeout para evitar freeze
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         final provider = context.read<AppProvider>();
-        await provider.loadUser();
-        if (mounted) setState(() => _hasSession = provider.currentUser != null);
+        // Timeout de 5 segundos para loadUser
+        final loaded = await provider.loadUser().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {
+            print('Timeout en loadUser, continuando sin sesión');
+            return false;
+          },
+        );
+        if (mounted) setState(() => _hasSession = loaded);
       } catch (e) {
         print('Error loading user: $e');
+        if (mounted) setState(() => _hasSession = false);
       }
 
-      // Verificar contraseña - SKIP en web production por problemas de renderizado
-      // El diálogo no es visible en algunos navegadores
-      bool passwordVerified = true;
-
-      // NOTA: Si necesitas autenticación en web, implementar otro método
-      // Por ahora, el acceso es abierto en producción web
-
-      if (mounted) setState(() => _passwordVerified = passwordVerified);
-
-      // Navegar después de la animación
+      // Navegar después de la animación (sin password dialog - acceso abierto)
       await Future.delayed(const Duration(milliseconds: 2500));
-      if (mounted && _passwordVerified) {
+      if (mounted) {
         Navigator.of(context).pushReplacement(
           PageRouteBuilder(
             pageBuilder: (_, __, ___) => MainNavigation(hasSession: _hasSession),
