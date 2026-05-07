@@ -29,28 +29,155 @@ class _SettingsScreenState extends State<SettingsScreen> {
             color: const Color(0xFF0A0A0A),
             child: Consumer<AppProvider>(
               builder: (context, provider, _) {
-                return ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.red, width: 2),
-                      shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.red.withOpacity(0.3),
-                          blurRadius: 10,
-                          spreadRadius: 1,
+                final isPremium = provider.currentUser?.isPremium ?? false;
+                final premiumPlan = provider.currentUser?.premiumPlan;
+                final subscriptionEnd = provider.currentUser?.subscriptionEnd;
+                final daysRemaining = subscriptionEnd != null
+                    ? subscriptionEnd.difference(DateTime.now()).inDays
+                    : null;
+
+                return Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: Colors.red, width: 2),
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.red.withOpacity(0.3),
+                                  blurRadius: 10,
+                                  spreadRadius: 1,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(Icons.person, color: Colors.white),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        provider.currentUser?.username ?? 'NO IDENTIFICADO',
+                                        style: GoogleFonts.orbitron(color: Colors.white, letterSpacing: 1, fontSize: 16),
+                                      ),
+                                    ),
+                                    if (isPremium)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            colors: [Colors.amber, Colors.orange],
+                                          ),
+                                          borderRadius: BorderRadius.circular(12),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.amber.withOpacity(0.4),
+                                              blurRadius: 8,
+                                              spreadRadius: 1,
+                                            ),
+                                          ],
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(Icons.star, color: Colors.black, size: 14),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              _getPlanDisplayName(premiumPlan),
+                                              style: GoogleFonts.orbitron(
+                                                color: Colors.black,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                                letterSpacing: 1,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 4),
+                                if (isPremium && subscriptionEnd != null)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: daysRemaining! > 7
+                                          ? Colors.green.withOpacity(0.2)
+                                          : daysRemaining > 0
+                                              ? Colors.orange.withOpacity(0.2)
+                                              : Colors.red.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          daysRemaining > 7
+                                              ? Icons.check_circle
+                                              : daysRemaining > 0
+                                                  ? Icons.warning
+                                                  : Icons.error,
+                                          color: daysRemaining > 7
+                                              ? Colors.green
+                                              : daysRemaining > 0
+                                                  ? Colors.orange
+                                                  : Colors.red,
+                                          size: 12,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          daysRemaining > 0
+                                              ? '$daysRemaining días restantes'
+                                              : 'Expirado',
+                                          style: TextStyle(
+                                            color: daysRemaining > 7
+                                                ? Colors.green
+                                                : daysRemaining > 0
+                                                    ? Colors.orange
+                                                    : Colors.red,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                if (!isPremium)
+                                  Text(
+                                    'Plan gratuito',
+                                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () => _showChangeNameDialog(context),
+                          icon: const Icon(Icons.edit, size: 16),
+                          label: const Text('CAMBIAR NOMBRE'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: const BorderSide(color: Color(0xFF333333)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
                         ),
-                      ],
-                    ),
-                    child: const Icon(Icons.person, color: Colors.white),
+                      ),
+                    ],
                   ),
-                  title: Text(
-                    provider.currentUser?.username ?? 'NO IDENTIFICADO',
-                    style: GoogleFonts.orbitron(color: Colors.white, letterSpacing: 1),
-                  ),
-                  subtitle: Text('Toca para cambiar nombre', style: TextStyle(color: Colors.grey[600])),
-                  onTap: () => _showChangeNameDialog(context),
                 );
               },
             ),
@@ -224,5 +351,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     );
+  }
+
+  String _getPlanDisplayName(String? plan) {
+    if (plan == null) return 'FREE';
+    switch (plan.toLowerCase()) {
+      case 'free': return 'FREE';
+      case 'premium': return 'PREMIUM';
+      case 'premium_plus': return 'PREMIUM+';
+      default: return plan.toUpperCase();
+    }
   }
 }

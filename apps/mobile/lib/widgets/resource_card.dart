@@ -19,40 +19,51 @@ class ResourceCard extends StatefulWidget {
 class _ResourceCardState extends State<ResourceCard>
     with SingleTickerProviderStateMixin {
   bool _isDownloading = false;
-  late AnimationController _glowController;
-  late Animation<double> _glowAnimation;
+  bool _isHovered = false;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
-    _glowController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
       vsync: this,
     )..repeat(reverse: true);
-    _glowAnimation = Tween<double>(begin: 0.3, end: 0.6).animate(
-      CurvedAnimation(parent: _glowController, curve: Curves.easeInOut),
+    _pulseAnimation = Tween<double>(begin: 0.3, end: 0.7).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
   }
 
   @override
   void dispose() {
-    _glowController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _glowAnimation,
-      builder: (context, child) {
-        return Card(
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth > 1200;
+    final isTablet = screenWidth > 600;
+
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        transform: Matrix4.identity()..scale(_isHovered ? 1.02 : 1.0),
+        child: Card(
           clipBehavior: Clip.antiAlias,
-          elevation: 0,
+          elevation: _isHovered ? 8 : 2,
+          shadowColor: Colors.red.withOpacity(_isHovered ? 0.4 : 0.2),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: BorderSide(
-              color: Colors.red.withOpacity(_glowAnimation.value * 0.5),
-              width: 1,
+              color: _isHovered
+                  ? Colors.red.withOpacity(0.8)
+                  : Colors.red.withOpacity(0.3),
+              width: _isHovered ? 2 : 1,
             ),
           ),
           child: InkWell(
@@ -61,142 +72,133 @@ class _ResourceCardState extends State<ResourceCard>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildThumbnail(context),
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                _buildThumbnail(context, isDesktop),
+                _buildContent(context, isDesktop),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThumbnail(BuildContext context, bool isDesktop) {
+    return AnimatedBuilder(
+      animation: _pulseAnimation,
+      builder: (context, child) {
+        return Container(
+          height: isDesktop ? 160 : 140,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Colors.red.withOpacity(0.3 * _pulseAnimation.value),
+                Colors.red.withOpacity(0.1),
+                Colors.black,
+              ],
+            ),
+            border: Border(
+              bottom: BorderSide(
+                color: Colors.red.withOpacity(0.3),
+                width: 1,
+              ),
+            ),
+          ),
+          child: Stack(
+            children: [
+              if (widget.resource.thumbnailUrl != null)
+                Positioned.fill(
+                  child: Image.network(
+                    widget.resource.thumbnailUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _buildIcon(context),
+                  ),
+                )
+              else
+                _buildIcon(context),
+              // Overlay gradiente
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.transparent,
+                        Colors.black.withOpacity(0.8),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              // Badge tipo de archivo
+              Positioned(
+                top: 10,
+                right: 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [Colors.red, Colors.red.withOpacity(0.7)],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.red.withOpacity(0.5),
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    widget.resource.fileType.toUpperCase(),
+                    style: GoogleFonts.orbitron(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 1,
+                    ),
+                  ),
+                ),
+              ),
+              // Badge categoría
+              Positioned(
+                top: 10,
+                left: 10,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.withOpacity(0.5)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        widget.resource.name,
+                        _getCategoryEmoji(),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        widget.resource.category.toUpperCase(),
                         style: GoogleFonts.orbitron(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red,
                           letterSpacing: 0.5,
                         ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          _buildCategoryChip(context),
-                          const Spacer(),
-                          _buildFavoriteIcon(context),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.folder_open,
-                              size: 12, color: Colors.grey[700]),
-                          const SizedBox(width: 4),
-                          Text(
-                            _getFormattedSize(),
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey[700],
-                              fontFamily: 'monospace',
-                            ),
-                          ),
-                          const Spacer(),
-                          _buildDownloadButton(context),
-                        ],
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         );
       },
-    );
-  }
-
-  String _getFormattedSize() {
-    final size = widget.resource.fileSize;
-    if (size == null) return 'N/A';
-    if (size < 1024) return '${size}B';
-    if (size < 1024 * 1024) return '${(size / 1024).toStringAsFixed(1)}KB';
-    return '${(size / (1024 * 1024)).toStringAsFixed(1)}MB';
-  }
-
-  Widget _buildThumbnail(BuildContext context) {
-    return Container(
-      height: 140,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.red.withOpacity(0.2),
-            Colors.red.withOpacity(0.05),
-            Colors.black,
-          ],
-        ),
-        border: Border.all(
-          color: Colors.red.withOpacity(0.3),
-          width: 1,
-        ),
-      ),
-      child: Stack(
-        children: [
-          if (widget.resource.thumbnailUrl != null)
-            Positioned.fill(
-              child: Image.network(
-                widget.resource.thumbnailUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => _buildIcon(context),
-              ),
-            )
-          else
-            _buildIcon(context),
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.9),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 8,
-            right: 8,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.red,
-                borderRadius: BorderRadius.circular(4),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.red.withOpacity(0.5),
-                    blurRadius: 8,
-                    spreadRadius: 1,
-                  ),
-                ],
-              ),
-              child: Text(
-                widget.resource.fileType.toUpperCase(),
-                style: GoogleFonts.orbitron(
-                  fontSize: 9,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 1,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -205,10 +207,32 @@ class _ResourceCardState extends State<ResourceCard>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            _getFileTypeIcon(),
-            size: 40,
-            color: Colors.red,
+          AnimatedBuilder(
+            animation: _pulseAnimation,
+            builder: (context, child) {
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.red.withOpacity(_pulseAnimation.value),
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.withOpacity(_pulseAnimation.value * 0.5),
+                      blurRadius: 20 * _pulseAnimation.value,
+                      spreadRadius: 2 * _pulseAnimation.value,
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  _getFileTypeIcon(),
+                  size: 40,
+                  color: Colors.red,
+                ),
+              );
+            },
           ),
           const SizedBox(height: 8),
           Text(
@@ -223,6 +247,132 @@ class _ResourceCardState extends State<ResourceCard>
         ],
       ),
     );
+  }
+
+  Widget _buildContent(BuildContext context, bool isDesktop) {
+    return Padding(
+      padding: const EdgeInsets.all(14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Nombre del recurso
+          Text(
+            widget.resource.name,
+            style: GoogleFonts.orbitron(
+              fontSize: isDesktop ? 14 : 13,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+              letterSpacing: 0.5,
+              height: 1.3,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 10),
+          // Info: tamaño y favoritos
+          Row(
+            children: [
+              // Tamaño del archivo
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A1A1A),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: Colors.grey[800]!),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.folder_open, size: 12, color: Colors.grey[600]),
+                    const SizedBox(width: 4),
+                    Text(
+                      _getFormattedSize(),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey[500],
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              // Favoritos
+              GestureDetector(
+                onTap: () => context
+                    .read<AppProvider>()
+                    .toggleFavorite(widget.resource.id, !widget.resource.isFavorite),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: widget.resource.isFavorite
+                        ? Colors.red.withOpacity(0.2)
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: widget.resource.isFavorite
+                          ? Colors.red
+                          : Colors.grey[800]!,
+                      width: 1,
+                    ),
+                  ),
+                  child: Icon(
+                    widget.resource.isFavorite ? Icons.star : Icons.star_outline,
+                    size: 16,
+                    color: widget.resource.isFavorite ? Colors.red : Colors.grey[600],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Botón descarga
+              GestureDetector(
+                onTap: _isDownloading ? null : () => _downloadResource(context),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: _isDownloading
+                        ? Colors.grey[900]
+                        : Colors.red.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _isDownloading
+                          ? Colors.grey[700]!
+                          : Colors.red.withOpacity(0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: _isDownloading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.red,
+                          ),
+                        )
+                      : Icon(
+                          Icons.download_rounded,
+                          size: 16,
+                          color: Colors.red,
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getFormattedSize() {
+    final size = widget.resource.fileSize;
+    if (size == null) return 'N/A';
+    if (size < 1024) return '${size}B';
+    if (size < 1024 * 1024) return '${(size / 1024).toStringAsFixed(1)}KB';
+    return '${(size / (1024 * 1024)).toStringAsFixed(1)}MB';
   }
 
   IconData _getFileTypeIcon() {
@@ -240,96 +390,38 @@ class _ResourceCardState extends State<ResourceCard>
       case 'tiff':
       case 'geotiff':
         return Icons.terrain;
+      case 'shp':
+      case 'geojson':
+        return Icons.layers;
+      case 'mbtiles':
+      case 'gpkg':
+        return Icons.folder;
+      case 'dted':
+      case 'cadrg':
+        return Icons.public;
       default:
         return Icons.insert_drive_file;
     }
   }
 
-  Widget _buildCategoryChip(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        border: Border.all(color: Colors.red.withOpacity(0.3)),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            _getCategoryIcon(),
-            style: const TextStyle(fontSize: 10),
-          ),
-          const SizedBox(width: 4),
-          Text(
-            widget.resource.category,
-            style: GoogleFonts.orbitron(
-              fontSize: 9,
-              fontWeight: FontWeight.w600,
-              color: Colors.red,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _getCategoryIcon() {
+  String _getCategoryEmoji() {
     switch (widget.resource.category.toLowerCase()) {
       case 'mapas':
+      case 'maps':
         return '🗺️';
       case 'tccc':
         return '🏥';
       case 'transmisiones':
+      case 'transmissions':
         return '📻';
       case 'manuales':
+      case 'manuals':
         return '📖';
-      default:
+      case 'documentation':
         return '📄';
+      default:
+        return '📦';
     }
-  }
-
-  Widget _buildFavoriteIcon(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context
-          .read<AppProvider>()
-          .toggleFavorite(widget.resource.id, !widget.resource.isFavorite),
-      child: Icon(
-        widget.resource.isFavorite ? Icons.star : Icons.star_outline,
-        size: 16,
-        color: widget.resource.isFavorite ? Colors.red : Colors.grey[700],
-      ),
-    );
-  }
-
-  Widget _buildDownloadButton(BuildContext context) {
-    return GestureDetector(
-      onTap: _isDownloading ? null : () => _downloadResource(context),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: _isDownloading
-              ? Colors.grey[900]
-              : Colors.red.withOpacity(0.15),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: _isDownloading
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: Colors.red,
-                ),
-              )
-            : Icon(
-                Icons.download_rounded,
-                size: 16,
-                color: Colors.red,
-              ),
-      ),
-    );
   }
 
   void _showDetail(BuildContext context) {
@@ -542,7 +634,6 @@ class _ResourceCardState extends State<ResourceCard>
       setState(() => _isDownloading = false);
 
       if (result != null && result['download_url'] != null) {
-        // Abrir la descarga en el navegador
         await DownloadHelper.openUrl(result['download_url']!);
 
         ScaffoldMessenger.of(context).showSnackBar(

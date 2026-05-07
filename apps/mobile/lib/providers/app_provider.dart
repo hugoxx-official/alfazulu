@@ -241,10 +241,42 @@ class AppProvider extends ChangeNotifier {
     try {
       final response = await http.post(
         Uri.parse('$apiUrl/resources/$resourceId/favorite'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'user_id': _currentUser?.id}),
       );
 
       if (response.statusCode == 200) {
-        await loadResources();
+        final data = jsonDecode(response.body);
+        // Actualizar favoritos del usuario actual
+        if (_currentUser != null && data['favorites'] != null) {
+          _currentUser = User(
+            id: _currentUser!.id,
+            username: _currentUser!.username,
+            favorites: List<String>.from(data['favorites']),
+            isPremium: _currentUser!.isPremium,
+            premiumPlan: _currentUser!.premiumPlan,
+            subscriptionEnd: _currentUser!.subscriptionEnd,
+          );
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      _error = 'Error: $e';
+      notifyListeners();
+    }
+  }
+
+  // Cargar favoritos del usuario
+  Future<void> loadFavorites() async {
+    if (_currentUser == null) return;
+    try {
+      final response = await http.get(
+        Uri.parse('$apiUrl/resources/favorites/${_currentUser!.id}'),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        // Actualizar lista de recursos con favoritos
+        // (opcional: filtrar o marcar favoritos)
       }
     } catch (e) {
       _error = 'Error: $e';

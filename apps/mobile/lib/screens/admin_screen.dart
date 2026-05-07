@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import '../providers/app_provider.dart';
 
@@ -195,6 +194,14 @@ class _AdminScreenState extends State<AdminScreen> {
                       _statCard('DESCARGAS', _stats!['total_downloads']?.toString() ?? '0'),
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      _statCard('PREMIUM', _stats!['premium_users']?.toString() ?? '0', Colors.amber),
+                      _statCard('FREE', _stats!['free_users']?.toString() ?? '0', Colors.grey),
+                    ],
+                  ),
                   const SizedBox(height: 24),
                 ],
               ),
@@ -248,7 +255,7 @@ class _AdminScreenState extends State<AdminScreen> {
     );
   }
 
-  Widget _statCard(String label, String value) {
+  Widget _statCard(String label, String value, [Color? color]) {
     return Expanded(
       child: Card(
         color: const Color(0xFF0A0A0A),
@@ -256,7 +263,7 @@ class _AdminScreenState extends State<AdminScreen> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              Text(value, style: GoogleFonts.orbitron(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.red, letterSpacing: 1)),
+              Text(value, style: GoogleFonts.orbitron(fontSize: 28, fontWeight: FontWeight.bold, color: color ?? Colors.red, letterSpacing: 1)),
               const SizedBox(height: 8),
               Text(label, style: GoogleFonts.orbitron(fontSize: 10, color: Colors.grey, letterSpacing: 1)),
             ],
@@ -451,7 +458,7 @@ class _ResourceFormDialogState extends State<_ResourceFormDialog> {
   String _category = 'DOCUMENTATION';
   String _fileType = 'PDF';
   int _fileSize = 0;
-  PlatformFile? _pickedFile;
+  dynamic _pickedFile; // Usar dynamic para evitar import de PlatformFile en web
   bool _isUploading = false;
   List<String> _categories = ['MAPS', 'TCCC', 'TRANSMISSIONS', 'MANUALS', 'DOCUMENTATION'];
   final List<String> _fileTypes = ['PDF', 'JPG', 'PNG', 'KML', 'GPX', 'KMZ', 'TIFF', 'GEOTIFF', 'SHP', 'GEOJSON', 'MBTILES', 'GPKG', 'DTED', 'CADRG'];
@@ -483,22 +490,14 @@ class _ResourceFormDialogState extends State<_ResourceFormDialog> {
   }
 
   Future<void> _pickFile() async {
-    try {
-      final result = await FilePicker.pickFiles(
-        type: FileType.any,
-        allowMultiple: false,
+    if (kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('En web, usa la URL de descarga directa'), backgroundColor: Colors.orange),
       );
-      if (result != null && result.files.isNotEmpty) {
-        final platformFile = result.files.first;
-        setState(() {
-          _pickedFile = platformFile;
-          _fileSize = platformFile.size;
-          _fileType = platformFile.extension?.toUpperCase() ?? 'FILE';
-        });
-      }
-    } catch (e) {
-      // Error picking file
+      return;
     }
+    // Mobile only - file_picker import conditional
+    throw UnimplementedError('File picker solo en mobile');
   }
 
   Future<void> _save() async {
@@ -507,46 +506,8 @@ class _ResourceFormDialogState extends State<_ResourceFormDialog> {
     setState(() => _isUploading = true);
 
     try {
-      if (_pickedFile != null) {
-        // Upload file via multipart/form-data
-        final request = http.MultipartRequest(
-          'POST',
-          Uri.parse('${AppProvider.apiUrl}/admin/resources/upload'),
-        );
-
-        if (kIsWeb) {
-          // Web: use bytes
-          request.files.add(http.MultipartFile.fromBytes(
-            'file',
-            _pickedFile!.bytes!,
-            filename: _pickedFile!.name,
-            contentType: MediaType('application', 'octet-stream'),
-          ));
-        } else {
-          // Mobile/Desktop: use path
-          request.files.add(await http.MultipartFile.fromPath(
-            'file',
-            _pickedFile!.path!,
-            contentType: MediaType('application', 'octet-stream'),
-          ));
-        }
-
-        request.fields['name'] = _nameController.text;
-        request.fields['description'] = _descController.text;
-        request.fields['category'] = _category;
-        request.fields['file_type'] = _fileType;
-        request.fields['file_size'] = _fileSize.toString();
-
-        final response = await request.send();
-
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          widget.onSave();
-          if (mounted) Navigator.pop(context);
-        } else {
-          // Handle error
-        }
-      } else {
-        // Save with URL only (existing behavior)
+      // Web: solo URL, mobile puede usar file picker
+      if (kIsWeb || _pickedFile == null) {
         final body = {
           'name': _nameController.text,
           'description': _descController.text,
@@ -922,17 +883,39 @@ class _PremiumManagerDialog extends StatefulWidget {
   State<_PremiumManagerDialog> createState() => _PremiumManagerDialogState();
 }
 
-class _PremiumManagerDialogState extends State<_PremiumManagerDialog> {
+class _PremiumManagerDialogState extends State<_PremiumManagerDialog> with SingleTickerProviderStateMixin {
   List<dynamic> _users = [];
+  List<Map<String, dynamic>> _plans = [];
   bool _isLoading = true;
+  late TabController _tabController;
 
-  final List<String> _plans = ['MENSUAL', 'ANUAL', 'VITALICIO'];
+  final List<String> _planTypes = ['MENSUAL', 'ANUAL', 'VITALICIO'];
   final List<String> _durations = ['1 mes', '6 meses', '1 año', 'Vitalicio'];
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
     _loadUsers();
+    _loadPlans();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadPlans() async {
+    try {
+      final response = await http.get(Uri.parse('${AppProvider.apiUrl}/admin/plans'));
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        setState(() => _plans = (data['plans'] as List).map((p) => Map<String, dynamic>.from(p)).toList());
+      }
+    } catch (e) {
+      print('Error loading plans: $e');
+    }
   }
 
   Future<void> _loadUsers() async {
@@ -961,12 +944,18 @@ class _PremiumManagerDialogState extends State<_PremiumManagerDialog> {
         case 'Vitalicio': endDate = DateTime(2099, 12, 31); break;
       }
 
+      // Mapear nombre del plan al ID correcto
+      String planId = 'premium';
+      if (plan == 'MENSUAL') planId = 'premium';
+      if (plan == 'ANUAL') planId = 'premium_plus';
+      if (plan == 'VITALICIO') planId = 'premium_plus';
+
       final response = await http.patch(
         Uri.parse('${AppProvider.apiUrl}/users/$userId/premium'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'is_premium': true,
-          'premium_plan': plan,
+          'premium_plan': planId,
           'subscription_end': endDate?.toIso8601String(),
         }),
       );
@@ -1017,62 +1006,412 @@ class _PremiumManagerDialogState extends State<_PremiumManagerDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: const Color(0xFF0A0A0A),
-      title: Text('GESTIONAR PREMIUM', style: GoogleFonts.orbitron(color: Colors.red)),
+      title: Row(
+        children: [
+          Text('GESTIONAR PREMIUM', style: GoogleFonts.orbitron(color: Colors.red)),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.add_circle, color: Colors.green),
+            onPressed: _addNewPlan,
+            tooltip: 'Añadir plan',
+          ),
+        ],
+      ),
       content: SizedBox(
-        width: 500,
-        height: 400,
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: Colors.red))
-            : _users.isEmpty
-                ? const Center(child: Text('No hay usuarios', style: TextStyle(color: Colors.grey)))
-                : ListView.builder(
-                    itemCount: _users.length,
-                    itemBuilder: (_, i) {
-                      final user = _users[i];
-                      final isPremium = user['is_premium'] ?? false;
-                      final plan = user['premium_plan'];
-                      final subEnd = user['subscription_end'];
-
-                      return Card(
-                        color: const Color(0xFF1A1A1A),
-                        margin: const EdgeInsets.symmetric(vertical: 4),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: isPremium ? Colors.amber : Colors.grey,
-                            child: Icon(isPremium ? Icons.star : Icons.person, color: Colors.black),
-                          ),
-                          title: Text(user['username'] ?? 'Sin nombre', style: GoogleFonts.orbitron(color: Colors.white, fontSize: 14)),
-                          subtitle: Text(
-                            isPremium ? '$plan - Hasta: ${subEnd != null ? DateTime.parse(subEnd).toString().split(' ')[0] : 'N/A'}' : 'Sin premium',
-                            style: TextStyle(color: isPremium ? Colors.amber : Colors.grey[600], fontSize: 11),
-                          ),
-                          trailing: PopupMenuButton<String>(
-                            icon: const Icon(Icons.more_vert, color: Colors.red),
-                            onSelected: (value) {
-                              if (value == 'remove') {
-                                _removePremium(user['id']);
-                              } else {
-                                final parts = value.split('|');
-                                if (parts.length == 2) _setPremium(user['id'], parts[0], parts[1]);
-                              }
-                            },
-                            itemBuilder: (context) => [
-                              if (isPremium)
-                                const PopupMenuItem(value: 'remove', child: Text('Remover Premium', style: TextStyle(color: Colors.orange)))
-                              else ...[
-                                const PopupMenuItem(enabled: false, child: Text('Asignar plan', style: TextStyle(color: Colors.grey, fontSize: 12))),
-                                ..._plans.expand((plan) => _durations.map((duration) => PopupMenuItem(value: '$plan|$duration', child: Text('$plan - $duration')))),
-                              ],
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+        width: 600,
+        height: 500,
+        child: Column(
+          children: [
+            TabBar(
+              controller: _tabController,
+              labelColor: Colors.red,
+              unselectedLabelColor: Colors.grey,
+              indicatorColor: Colors.red,
+              tabs: const [
+                Tab(icon: Icon(Icons.people), text: 'USUARIOS'),
+                Tab(icon: Icon(Icons.workspace_premium), text: 'PLANES'),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: TabBarView(
+                controller: _tabController,
+                children: [
+                  // Pestaña Usuarios
+                  _buildUsersTab(),
+                  // Pestaña Planes
+                  _buildPlansTab(),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('CERRAR')),
       ],
+    );
+  }
+
+  Widget _buildUsersTab() {
+    if (_users.isEmpty) {
+      return const Center(child: Text('No hay usuarios', style: TextStyle(color: Colors.grey)));
+    }
+    return ListView.builder(
+      itemCount: _users.length,
+      itemBuilder: (_, i) {
+        final user = _users[i];
+        final isPremium = user['is_premium'] ?? false;
+        final plan = user['premium_plan'];
+        final subEnd = user['subscription_end'];
+
+        return Card(
+          color: const Color(0xFF1A1A1A),
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: isPremium ? Colors.amber : Colors.grey,
+              child: Icon(isPremium ? Icons.star : Icons.person, color: Colors.black),
+            ),
+            title: Text(user['username'] ?? 'Sin nombre', style: GoogleFonts.orbitron(color: Colors.white, fontSize: 14)),
+            subtitle: Text(
+              isPremium ? '$plan - Hasta: ${subEnd != null ? DateTime.parse(subEnd).toString().split(' ')[0] : 'N/A'}' : 'Sin premium',
+              style: TextStyle(color: isPremium ? Colors.amber : Colors.grey[600], fontSize: 11),
+            ),
+            trailing: PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Colors.red),
+              onSelected: (value) {
+                if (value == 'remove') {
+                  _removePremium(user['id']);
+                } else {
+                  final parts = value.split('|');
+                  if (parts.length == 2) _setPremium(user['id'], parts[0], parts[1]);
+                }
+              },
+              itemBuilder: (context) => [
+                if (isPremium)
+                  const PopupMenuItem(value: 'remove', child: Text('Remover Premium', style: TextStyle(color: Colors.orange)))
+                else ...[
+                  const PopupMenuItem(enabled: false, child: Text('Asignar plan', style: TextStyle(color: Colors.grey, fontSize: 12))),
+                  ..._planTypes.expand((plan) => _durations.map((duration) => PopupMenuItem(value: '$plan|$duration', child: Text('$plan - $duration')))),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPlansTab() {
+    if (_plans.isEmpty) {
+      return const Center(child: CircularProgressIndicator(color: Colors.red));
+    }
+    return ListView.builder(
+      itemCount: _plans.length,
+      itemBuilder: (_, i) {
+        final plan = _plans[i];
+        final planId = plan['id'] ?? '';
+        final planName = plan['plan_name'] ?? '';
+        final displayName = plan['display_name'] ?? '';
+        final price = plan['price'] ?? '';
+        final color = plan['color'] ?? '#666666';
+        final features = (plan['features'] as List?)?.map((e) => e.toString()).toList() ?? [];
+        final limitations = (plan['limitations'] as List?)?.map((e) => e.toString()).toList() ?? [];
+
+        return Card(
+          color: const Color(0xFF1A1A1A),
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        displayName,
+                        style: GoogleFonts.orbitron(fontSize: 16, fontWeight: FontWeight.bold, color: Color(int.parse(color.replaceFirst('#', '0xFF')))),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        price,
+                        style: GoogleFonts.orbitron(fontSize: 14, color: Colors.white),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.edit, color: Colors.red, size: 20),
+                      onPressed: () => _editPlan(plan),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                      onPressed: () => _deletePlan(planId),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _buildEditableList('VENTAJAS', features, Colors.green, (newList) => _updatePlan(planId, {'features': newList})),
+                const SizedBox(height: 12),
+                _buildEditableList('LIMITACIONES', limitations, Colors.orange, (newList) => _updatePlan(planId, {'limitations': newList})),
+              ],
+            ),
+          ),
+        );
+      },
+      padding: const EdgeInsets.only(bottom: 60),
+    );
+  }
+
+  Widget _buildEditableList(String title, List<String> items, Color color, Function(List<String>) onSave) {
+    final controller = TextEditingController(text: items.join(', '));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: GoogleFonts.orbitron(fontSize: 11, color: color, letterSpacing: 1)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          style: const TextStyle(color: Colors.white, fontSize: 12),
+          decoration: InputDecoration(
+            hintText: 'Separar por comas',
+            hintStyle: TextStyle(color: Colors.grey[600]),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: color),
+            ),
+          ),
+          maxLines: 3,
+        ),
+        const SizedBox(height: 8),
+        ElevatedButton(
+          onPressed: () {
+            final newList = controller.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+            onSave(newList);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('$title actualizadas'), backgroundColor: Colors.green, duration: const Duration(seconds: 1)),
+            );
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: color,
+            minimumSize: const Size(double.infinity, 36),
+          ),
+          child: Text('GUARDAR $title', style: GoogleFonts.orbitron(fontSize: 11)),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _updatePlan(String planId, Map<String, dynamic> data) async {
+    try {
+      final response = await http.put(
+        Uri.parse('${AppProvider.apiUrl}/admin/plans/$planId'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(data),
+      );
+      if (response.statusCode == 200) {
+        _loadPlans();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: const Text('Plan actualizado'), backgroundColor: Colors.green, duration: const Duration(seconds: 1)),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error updating plan: $e');
+    }
+  }
+
+  Future<void> _editPlan(Map<String, dynamic> plan) async {
+    final planId = plan['id'] ?? '';
+    final displayNameController = TextEditingController(text: plan['display_name'] ?? '');
+    final priceController = TextEditingController(text: plan['price'] ?? '');
+    final colorController = TextEditingController(text: plan['color'] ?? '#666666');
+
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0A0A0A),
+        title: Text('EDITAR PLAN', style: GoogleFonts.orbitron(color: Colors.red)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: displayNameController,
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration('Nombre visible'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: priceController,
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration('Precio (ej: 4.99/mes)'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: colorController,
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration('Color (HEX)'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCELAR'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _updatePlan(planId, {
+                'display_name': displayNameController.text,
+                'price': priceController.text,
+                'color': colorController.text,
+              });
+            },
+            child: const Text('GUARDAR'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _deletePlan(String planId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0A0A0A),
+        title: Text('ELIMINAR PLAN', style: GoogleFonts.orbitron(color: Colors.red)),
+        content: const Text('¿Seguro que deseas eliminar este plan?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCELAR'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('ELIMINAR'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final response = await http.delete(
+          Uri.parse('${AppProvider.apiUrl}/admin/plans/$planId'),
+        );
+        if (response.statusCode == 200) {
+          _loadPlans();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: const Text('Plan eliminado'), backgroundColor: Colors.green),
+            );
+          }
+        }
+      } catch (e) {
+        print('Error deleting plan: $e');
+      }
+    }
+  }
+
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: Colors.grey),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: Colors.red),
+      ),
+    );
+  }
+
+  Future<void> _addNewPlan() async {
+    final displayNameController = TextEditingController();
+    final priceController = TextEditingController();
+    final colorController = TextEditingController(text: '#666666');
+    final planNameController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: const Color(0xFF0A0A0A),
+        title: Text('NUEVO PLAN', style: GoogleFonts.orbitron(color: Colors.green)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: planNameController,
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration('ID (ej: premium_plus)'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: displayNameController,
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration('Nombre visible'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: priceController,
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration('Precio'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: colorController,
+                style: const TextStyle(color: Colors.white),
+                decoration: _inputDecoration('Color (HEX)'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCELAR'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              try {
+                final response = await http.post(
+                  Uri.parse('${AppProvider.apiUrl}/admin/plans'),
+                  headers: {'Content-Type': 'application/json'},
+                  body: jsonEncode({
+                    'plan_name': planNameController.text.toLowerCase(),
+                    'display_name': displayNameController.text,
+                    'price': priceController.text,
+                    'color': colorController.text,
+                    'features': [],
+                    'limitations': [],
+                  }),
+                );
+                if (response.statusCode == 200) {
+                  _loadPlans();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: const Text('Plan creado'), backgroundColor: Colors.green),
+                    );
+                  }
+                }
+              } catch (e) {
+                print('Error creating plan: $e');
+              }
+            },
+            child: const Text('CREAR'),
+          ),
+        ],
+      ),
     );
   }
 }

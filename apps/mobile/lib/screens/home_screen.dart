@@ -77,9 +77,15 @@ class _HomeScreenState extends State<HomeScreen>
         actions: [
           Consumer<AppProvider>(builder: (context, provider, _) {
             if (provider.currentUser != null) {
+              final isPremium = provider.currentUser!.isPremium;
+              final premiumPlan = provider.currentUser!.premiumPlan;
               return Padding(
                 padding: const EdgeInsets.only(right: 16.0),
                 child: Row(children: [
+                  if (isPremium) ...[
+                    _buildPlanIcon(premiumPlan),
+                    const SizedBox(width: 6),
+                  ],
                   AnimatedBuilder(
                     animation: _pulseAnimation,
                     builder: (context, child) {
@@ -426,23 +432,59 @@ class _HomeScreenState extends State<HomeScreen>
             .where((r) => r.category == _selectedCategory)
             .toList();
 
-    return resources.isEmpty
-        ? _buildNoResults(context)
-        : SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                childAspectRatio: 0.75,
-                crossAxisSpacing: 14,
-                mainAxisSpacing: 14,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => ResourceCard(resource: resources[index]),
-                childCount: resources.length,
-              ),
+    if (resources.isEmpty) return _buildNoResults(context);
+
+    return SliverLayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.crossAxisExtent;
+
+        // Responsive breakpoints
+        int crossAxisCount;
+        double childAspectRatio;
+        double horizontalPadding;
+        double crossAxisSpacing;
+        double mainAxisSpacing;
+
+        if (maxWidth < 600) {
+          // Mobile
+          crossAxisCount = 2;
+          childAspectRatio = 0.75;
+          horizontalPadding = 16;
+          crossAxisSpacing = 12;
+          mainAxisSpacing = 12;
+        } else if (maxWidth < 1200) {
+          // Tablet
+          crossAxisCount = 3;
+          childAspectRatio = 0.8;
+          horizontalPadding = 24;
+          crossAxisSpacing = 16;
+          mainAxisSpacing = 16;
+        } else {
+          // Desktop
+          crossAxisCount = 4;
+          childAspectRatio = 0.85;
+          horizontalPadding = 32;
+          crossAxisSpacing = 20;
+          mainAxisSpacing = 20;
+        }
+
+        return SliverPadding(
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+          sliver: SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              childAspectRatio: childAspectRatio,
+              crossAxisSpacing: crossAxisSpacing,
+              mainAxisSpacing: mainAxisSpacing,
             ),
-          );
+            delegate: SliverChildBuilderDelegate(
+              (context, index) => ResourceCard(resource: resources[index]),
+              childCount: resources.length,
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Widget _buildNoResults(BuildContext context) => SliverToBoxAdapter(
@@ -468,4 +510,31 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
       );
+
+  Widget _buildPlanIcon(String? plan) {
+    IconData icon;
+    Color color;
+    switch (plan?.toLowerCase()) {
+      case 'premium_plus':
+        icon = Icons.workspace_premium;
+        color = Colors.red;
+        break;
+      case 'premium':
+        icon = Icons.star;
+        color = Colors.amber;
+        break;
+      default:
+        icon = Icons.shield;
+        color = Colors.grey;
+    }
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color, width: 1),
+      ),
+      child: Icon(icon, size: 14, color: color),
+    );
+  }
 }

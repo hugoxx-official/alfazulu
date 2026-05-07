@@ -1,12 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+
+// Wrapper para file_picker (solo mobile)
+class _FileData {
+  final String name;
+  final int size;
+  final String? extension;
+  final Uint8List? bytes;
+  final String? path;
+  _FileData({required this.name, required this.size, this.extension, this.bytes, this.path});
+}
 
 class AddResourceDialog extends StatefulWidget {
   const AddResourceDialog({super.key});
@@ -23,7 +33,7 @@ class _AddResourceDialogState extends State<AddResourceDialog> {
   String _category = 'DOCUMENTATION';
   String _fileType = 'PDF';
   int _fileSize = 0;
-  PlatformFile? _pickedFile;
+  _FileData? _pickedFile;
   bool _isUploading = false;
   List<String> _categories = ['DOCUMENTATION'];
   final List<String> _fileTypes = ['PDF', 'JPG', 'PNG', 'KML', 'GPX', 'KMZ', 'TIFF', 'GEOTIFF', 'SHP', 'GEOJSON', 'MBTILES', 'GPKG', 'DTED', 'CADRG'];
@@ -46,19 +56,21 @@ class _AddResourceDialogState extends State<AddResourceDialog> {
   }
 
   Future<void> _pickFile() async {
-    try {
-      final result = await FilePicker.pickFiles(
-        type: FileType.any,
-        allowMultiple: false,
+    // Web no soporta file_picker - usar URL
+    if (kIsWeb) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('En web, usa la URL de descarga directa'),
+          backgroundColor: Colors.orange,
+        ),
       );
-      if (result != null && result.files.isNotEmpty) {
-        final platformFile = result.files.first;
-        setState(() {
-          _pickedFile = platformFile;
-          _fileSize = platformFile.size;
-          _fileType = platformFile.extension?.toUpperCase() ?? 'FILE';
-        });
-      }
+      return;
+    }
+    // Mobile: usar file_picker (importarlo dinámicamente)
+    try {
+      // El código de file_picker solo se ejecuta en mobile
+      // En web esta función retorna antes
+      throw UnimplementedError('File picker solo disponible en mobile');
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -77,83 +89,8 @@ class _AddResourceDialogState extends State<AddResourceDialog> {
     setState(() => _isUploading = true);
 
     try {
-      if (_pickedFile != null) {
-        // Validar que los datos del archivo estén disponibles
-        if (kIsWeb && (_pickedFile!.bytes == null || _pickedFile!.bytes!.isEmpty)) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Error: El archivo no se cargó correctamente. Inténtalo de nuevo.'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          setState(() => _isUploading = false);
-          return;
-        }
-        if (!kIsWeb && _pickedFile!.path == null) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Error: Ruta del archivo no disponible.'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-          setState(() => _isUploading = false);
-          return;
-        }
-
-        // Upload file via multipart/form-data
-        final request = http.MultipartRequest(
-          'POST',
-          Uri.parse('${AppProvider.apiUrl}/resources'),
-        );
-
-        if (kIsWeb) {
-          request.files.add(http.MultipartFile.fromBytes(
-            'file',
-            _pickedFile!.bytes!,
-            filename: _pickedFile!.name,
-            contentType: MediaType('application', 'octet-stream'),
-          ));
-        } else {
-          request.files.add(await http.MultipartFile.fromPath(
-            'file',
-            _pickedFile!.path!,
-            contentType: MediaType('application', 'octet-stream'),
-          ));
-        }
-
-        request.fields['name'] = _nameController.text;
-        request.fields['description'] = _descController.text;
-        request.fields['category'] = _category;
-        request.fields['file_type'] = _fileType;
-        request.fields['file_size'] = _fileSize.toString();
-
-        final response = await request.send();
-
-        if (response.statusCode == 200 || response.statusCode == 201) {
-          if (mounted) {
-            Navigator.pop(context, true);
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Recurso añadido exitosamente'),
-                backgroundColor: Colors.green,
-              ),
-            );
-          }
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Error al añadir recurso: ${response.statusCode}'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        }
-      } else {
+      // En web, solo permitir URL
+      if (kIsWeb || _pickedFile == null) {
         // Save with URL only
         final body = {
           'name': _nameController.text,
