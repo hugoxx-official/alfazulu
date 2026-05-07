@@ -1,9 +1,15 @@
 # GITHUB WORKFLOW
 
-## Repository
-- **URL**: https://github.com/hugoxx-official/alfazulu
+## Repositorios
+### Frontend Web
+- **URL**: https://github.com/hugoxx-official/alfazulu.git
 - **Rama**: master
-- **Estado**: Up to date
+- **Directorio**: `C:\Users\hugui\OneDrive\Escritorio\[Programacion]\Proyecto AlfaZulu\AlfaZulu`
+
+### Backend
+- **URL**: https://github.com/hugoxx-official/alfazulu-backend.git
+- **Rama**: master
+- **Directorio**: `backend/` (relativo al frontend) o repo separado
 
 ## Último Commit
 ```

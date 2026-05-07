@@ -7,6 +7,10 @@
 - **Deployment**: Railway (backend), Flutter web build (static)
 - **Renderer**: CanvasKit
 
+## Repositorios GitHub
+- **Frontend Web**: https://github.com/hugoxx-official/alfazulu.git
+- **Backend**: https://github.com/hugoxx-official/alfazulu-backend.git
+
 ## Objetivo
 Gestión de recursos militares con sistema premium, favoritos por usuario, y panel de administración.
 
