@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:http_parser/http_parser.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:file_picker/file_picker.dart';
+import 'package:file_picker/file_picker.dart' if (dart.library.html) 'package:file_picker/file_picker.dart';
 import '../providers/app_provider.dart';
 
 class AdminScreen extends StatefulWidget {

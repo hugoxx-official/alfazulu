@@ -1,5 +1,5 @@
 # Build stage
-FROM ghcr.io/cirruslabs/flutter:3.27.0 AS build
+FROM ghcr.io/cirruslabs/flutter:3.24.5 AS build
 
 WORKDIR /app
 
@@ -21,6 +21,6 @@ COPY --from=build /app/build/web /usr/share/nginx/html
 # Configurar nginx para SPA
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+EXPOSE 8080
 
 CMD ["nginx", "-g", "daemon off;"]
