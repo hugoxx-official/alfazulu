@@ -7,8 +7,14 @@ import 'screens/settings_screen.dart';
 import 'screens/tgcf_screen.dart';
 import 'screens/premium_screen.dart';
 import 'theme/app_theme.dart';
+import 'services/notification_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize notification service
+  await NotificationService().init();
+
   runApp(const AlfaZuluApp());
 }
 

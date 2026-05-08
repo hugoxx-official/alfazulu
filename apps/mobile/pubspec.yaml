@@ -18,6 +18,9 @@ dependencies:
   http_parser: ^4.0.2
   file_picker: ^6.1.1
   path_provider: ^2.1.1
+  flutter_local_notifications: ^17.0.0
+  permission_handler: ^11.0.0
+  workmanager: ^0.5.2
 
 dev_dependencies:
   flutter_test:

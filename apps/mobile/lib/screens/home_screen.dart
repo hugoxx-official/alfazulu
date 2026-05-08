@@ -8,6 +8,7 @@ import '../widgets/resource_card.dart';
 import '../widgets/user_dialog.dart';
 import '../widgets/add_resource_dialog.dart';
 import 'notifications_screen.dart';
+import '../services/notification_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -569,26 +570,15 @@ class _NotificationButtonState extends State<_NotificationButton> {
   void initState() {
     super.initState();
     _loadUnreadCount();
+    // Listen to notification service updates
+    NotificationService().unreadStream?.listen((count) {
+      if (mounted) setState(() => _unreadCount = count);
+    });
   }
 
   Future<void> _loadUnreadCount() async {
-    try {
-      final userId = widget.provider.currentUser?.id;
-      if (userId == null) return;
-
-      final response = await http.get(
-        Uri.parse('${AppProvider.apiUrl}/notifications?user_id=$userId&unread_only=true&limit=100'),
-      );
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        setState(() {
-          _unreadCount = (data['notifications'] as List?)?.length ?? 0;
-        });
-      }
-    } catch (e) {
-      // Silent error
-    }
+    final count = NotificationService().unreadCount;
+    if (mounted) setState(() => _unreadCount = count);
   }
 
   @override
