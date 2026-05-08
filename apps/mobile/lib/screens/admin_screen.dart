@@ -1757,7 +1757,7 @@ class _CategoriesEditorDialogState extends State<CategoriesEditorDialog> {
       final response = await http.post(
         Uri.parse('${AppProvider.apiUrl}/admin/categories'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'categories': [..._categories, name]}),
+        body: jsonEncode({'category': name}),
       );
 
       if (response.statusCode == 200) {
@@ -1789,13 +1789,9 @@ class _CategoriesEditorDialogState extends State<CategoriesEditorDialog> {
 
   Future<void> _removeCategory(String category) async {
     try {
-      final newCategories = _categories.where((c) => c != category).toList();
-
-      // Actualizar en backend (DB) - se sincroniza para todos los usuarios
-      final response = await http.post(
-        Uri.parse('${AppProvider.apiUrl}/admin/categories'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'categories': newCategories}),
+      // Eliminar en backend (DB) - usa el endpoint DELETE
+      final response = await http.delete(
+        Uri.parse('${AppProvider.apiUrl}/admin/categories/${Uri.encodeComponent(category)}'),
       );
 
       if (response.statusCode == 200) {
