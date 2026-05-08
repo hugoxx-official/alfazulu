@@ -5,7 +5,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_provider.dart';
 import 'admin_screen.dart';
-import 'downloads_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -189,18 +188,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             color: const Color(0xFF0A0A0A),
             child: Column(
               children: [
-                ListTile(
-                  leading: const Icon(Icons.download, color: Colors.red),
-                  title: Text('DESCARGAS', style: GoogleFonts.orbitron(color: Colors.white, letterSpacing: 1)),
-                  subtitle: const Text('Ver archivos descargados'),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const DownloadsScreen()),
-                    );
-                  },
-                ),
-                const Divider(color: Color(0xFF222222)),
                 ListTile(
                   leading: const Icon(Icons.admin_panel_settings, color: Colors.red),
                   title: Text('PANEL ADMIN', style: GoogleFonts.orbitron(color: Colors.white, letterSpacing: 1)),
