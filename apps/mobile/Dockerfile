@@ -1,5 +1,5 @@
 # Build stage
-FROM ghcr.io/cirruslabs/flutter:3.24.0 AS build
+FROM ghcr.io/cirruslabs/flutter:3.27.0 AS build
 
 WORKDIR /app
 
@@ -9,8 +9,8 @@ RUN flutter pub get
 
 COPY . .
 
-# Compilar para web
-RUN flutter build web --release --wasm
+# Compilar para web (sin WASM para compatibilidad con file_picker)
+RUN flutter build web --release
 
 # Production stage
 FROM nginx:alpine
