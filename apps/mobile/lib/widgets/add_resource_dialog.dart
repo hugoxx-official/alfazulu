@@ -7,6 +7,7 @@ import 'package:http_parser/http_parser.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import 'package:file_picker/file_picker.dart';
 
 // Wrapper para file_picker (solo mobile)
 class _FileData {
@@ -66,11 +67,35 @@ class _AddResourceDialogState extends State<AddResourceDialog> {
       );
       return;
     }
-    // Mobile: usar file_picker (importarlo dinámicamente)
+
+    // Mobile: usar file_picker
     try {
-      // El código de file_picker solo se ejecuta en mobile
-      // En web esta función retorna antes
-      throw UnimplementedError('File picker solo disponible en mobile');
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        allowMultiple: false,
+      );
+
+      if (result != null && result.files.single.path != null) {
+        final file = result.files.single;
+        setState(() {
+          _pickedFile = _FileData(
+            name: file.name,
+            size: file.size,
+            extension: file.extension,
+            path: file.path,
+          );
+          _fileSize = file.size;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Archivo seleccionado: ${file.name}'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -90,7 +115,7 @@ class _AddResourceDialogState extends State<AddResourceDialog> {
 
     try {
       // En web, solo permitir URL
-      if (kIsWeb || _pickedFile == null) {
+      if (kIsWeb || _pickedFile == null || _pickedFile!.path == null) {
         // Save with URL only
         final body = {
           'name': _nameController.text,
@@ -121,7 +146,53 @@ class _AddResourceDialogState extends State<AddResourceDialog> {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('Error al añadir recurso: ${response.statusCode}'),
+                content: Text('Error al añadir recurso: ${response.body}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      } else {
+        // Mobile: subir archivo con multipart
+        final request = http.MultipartRequest(
+          'POST',
+          Uri.parse('${AppProvider.apiUrl}/resources'),
+        );
+
+        request.fields['name'] = _nameController.text;
+        request.fields['description'] = _descController.text;
+        request.fields['category'] = _category;
+        request.fields['file_type'] = _fileType;
+        request.fields['file_size'] = _fileSize.toString();
+
+        // Adjuntar archivo
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'file',
+            _pickedFile!.path!,
+            filename: _pickedFile!.name,
+          ),
+        );
+
+        final response = await request.send();
+        final responseData = await response.stream.toBytes();
+        final responseString = utf8.decode(responseData);
+
+        if (response.statusCode == 200 || response.statusCode == 201) {
+          if (mounted) {
+            Navigator.pop(context, true);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Recurso subido exitosamente'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error al subir: $responseString'),
                 backgroundColor: Colors.red,
               ),
             );
@@ -132,7 +203,7 @@ class _AddResourceDialogState extends State<AddResourceDialog> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error de conexión: $e'),
+            content: Text('Error: $e'),
             backgroundColor: Colors.red,
           ),
         );
