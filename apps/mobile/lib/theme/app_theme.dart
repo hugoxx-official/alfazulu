@@ -43,7 +43,7 @@ class AppTheme {
         ),
         iconTheme: const IconThemeData(color: _primary),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: _surfaceElevated,
         elevation: 0,
         shadowColor: _primary.withOpacity(0.2),
@@ -117,7 +117,7 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      dialogTheme: DialogTheme(
+      dialogTheme: DialogThemeData(
         backgroundColor: _surfaceElevated,
         elevation: 16,
         shadowColor: _primary.withOpacity(0.3),
