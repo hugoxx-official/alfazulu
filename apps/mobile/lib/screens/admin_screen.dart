@@ -1175,9 +1175,6 @@ class _PremiumManagerDialogState extends State<_PremiumManagerDialog> with Singl
   bool _isLoading = true;
   late TabController _tabController;
 
-  final List<String> _planTypes = ['MENSUAL', 'ANUAL', 'VITALICIO'];
-  final List<String> _durations = ['1 mes', '6 meses', '1 año', 'Vitalicio'];
-
   @override
   void initState() {
     super.initState();
@@ -1219,7 +1216,7 @@ class _PremiumManagerDialogState extends State<_PremiumManagerDialog> with Singl
     }
   }
 
-  Future<void> _setPremium(String userId, String plan, String duration) async {
+  Future<void> _setPremium(String userId, String planName, String duration) async {
     try {
       DateTime? endDate;
       final now = DateTime.now();
@@ -1230,18 +1227,12 @@ class _PremiumManagerDialogState extends State<_PremiumManagerDialog> with Singl
         case 'Vitalicio': endDate = DateTime(2099, 12, 31); break;
       }
 
-      // Mapear nombre del plan al ID correcto
-      String planId = 'premium';
-      if (plan == 'MENSUAL') planId = 'premium';
-      if (plan == 'ANUAL') planId = 'premium_plus';
-      if (plan == 'VITALICIO') planId = 'premium_plus';
-
       final response = await http.patch(
         Uri.parse('${AppProvider.apiUrl}/users/$userId/premium'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'is_premium': true,
-          'premium_plan': planId,
+          'premium_plan': planName,
           'subscription_end': endDate?.toIso8601String(),
         }),
       );
@@ -1249,7 +1240,7 @@ class _PremiumManagerDialogState extends State<_PremiumManagerDialog> with Singl
       if (response.statusCode == 200) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Plan $plan activado por $duration'), backgroundColor: Colors.green),
+            SnackBar(content: Text('Plan $planName activado por $duration'), backgroundColor: Colors.green),
           );
           _loadUsers();
         }
@@ -1379,7 +1370,23 @@ class _PremiumManagerDialogState extends State<_PremiumManagerDialog> with Singl
                   const PopupMenuItem(value: 'remove', child: Text('Remover Premium', style: TextStyle(color: Colors.orange)))
                 else ...[
                   const PopupMenuItem(enabled: false, child: Text('Asignar plan', style: TextStyle(color: Colors.grey, fontSize: 12))),
-                  ..._planTypes.expand((plan) => _durations.map((duration) => PopupMenuItem(value: '$plan|$duration', child: Text('$plan - $duration')))),
+                  if (_plans.isEmpty)
+                    const PopupMenuItem(enabled: false, child: Text('Cargando planes...', style: TextStyle(color: Colors.grey)))
+                  else
+                    ..._plans.map((plan) {
+                      final displayName = plan['display_name'] ?? plan['plan_name'] ?? 'Sin nombre';
+                      final priceMonthly = plan['price_monthly'] ?? '0';
+                      return PopupMenuItem(
+                        value: "${plan['plan_name']}|1 mes",
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(displayName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                            Text('$priceMonthly €/mes', style: const TextStyle(color: Colors.green, fontSize: 10)),
+                          ],
+                        ),
+                      );
+                    }),
                 ],
               ],
             ),
