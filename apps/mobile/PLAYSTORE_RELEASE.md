@@ -47,7 +47,7 @@ key.properties
 - [ ] **Título**: AlfaZulu - Gestión de Recursos
 - [ ] **Descripción corta**: Plataforma profesional de gestión de recursos militares
 - [ ] **Descripción completa**: (ver más abajo)
-- [ ] **Icono 512x512**: `logo1.png` (redimensionar)
+- [ ] **Icono 512x512**: `logo2.png` (redimensionar)
 - [ ] **Imagen destacada 1024x500**: Crear banner
 - [ ] **Capturas de pantalla**: Mínimo 2 (móvil y tablet)
 

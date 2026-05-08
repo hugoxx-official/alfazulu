@@ -70,7 +70,8 @@ class _HomeScreenState extends State<HomeScreen>
       appBar: AppBar(
         title: Text('ALFAZULU',
             style: GoogleFonts.orbitron(
-                letterSpacing: 4,
+                fontSize: 18,
+                letterSpacing: 2,
                 fontWeight: FontWeight.w900,
                 shadows: [
                   Shadow(

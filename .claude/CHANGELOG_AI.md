@@ -1,5 +1,193 @@
 # CHANGELOG AI
 
+## 2026-05-09 - Planes Premium Dinámicos desde Supabase
+
+### Cambios Principales
+
+#### 1. Planes Premium Dinámicos en Panel Admin
+- **Problema**: Los planes en el selector de usuarios estaban hardcodeados (`['MENSUAL', 'ANUAL', 'VITALICIO']`)
+- **Solución**: Eliminado código hardcodeado, ahora usa `_plans` cargado desde `public.premium_plans`
+- **Impacto**: Añadir/eliminar/editar planes en Supabase se refleja automáticamente sin tocar código Flutter
+
+### Frontend Changes
+- `apps/mobile/lib/screens/admin_screen.dart`:
+  - Eliminados: `_planTypes = ['MENSUAL', 'ANUAL', 'VITALICIO']` y `_durations`
+  - Eliminada lógica de mapeo fijo de planes (`if (plan == 'MENSUAL') planId = 'premium'`)
+  - `_setPremium()` ahora usa `plan_name` directamente del plan seleccionado
+  - `_buildUsersTab()` renderiza selector desde `_plans` cargado vía API
+  - Selector muestra: `display_name` y `price_monthly` de cada plan real
+
+### Commits
+```
+frontend: feat: planes premium dinámicos desde Supabase
+frontend: refactor: eliminar código hardcodeado en admin_screen.dart
+```
+
+---
+
+## 2026-05-09 - Admin Stats + Schema Resources + Notificaciones
+
+### Cambios Principales
+
+#### 1. Estadísticas Panel Admin (Datos Reales)
+- **Problema**: Stats del admin mostraban ceros o valores hardcodeados
+- **Solución**: Backend ahora consulta Supabase y calcula:
+  - `total_resources`: COUNT(public.resources)
+  - `total_users`: COUNT(public.users)
+  - `total_downloads`: COUNT(public.downloads)
+  - `total_maps`: COUNT(public.maps)
+  - `premium_users`: Usuarios con is_premium=true y premium_plan != 'free'
+  - `free_users`: Total - premium_users
+
+#### 2. Corrección Columna `file_name` en Resources
+- **Problema**: Tabla `public.resources` no tiene columna `file_name`, la columna correcta es `name`
+- **Error**: `PostgrestException: could not find file_name on table resources`
+- **Solución**: Reemplazar `file_name` por `name` en todas las consultas backend
+
+#### 3. Notificaciones Locales Reales del Sistema
+- Reescrito `notification_service.dart` completamente
+- NOT usa Firebase/FCM - solo flutter_local_notifications
+- Notificaciones aparecen como banner REAL del sistema incluso con app abierta
+- Dos canales: normal (high) e instantáneo (max priority)
+- Foreground polling cada 30 segundos
+- Permisos Android 13+ solicitados runtime
+
+#### 4. Logo y Branding
+- Cambiado logo1.png por logo2.png en assets
+- Splash screen usa logo2.png con animación mejorada
+- Nombre cambiado de "alfazulu" a "AlfaZulu" (capitalización)
+
+#### 5. Mejoras de UI
+- Loading screen con animación de rotación y shimmer
+- Título "ALFAZULU" en AppBar ahora visible completo (reducido letterSpacing)
+- Splash screen más elaborada con efectos de glow y rotación
+
+### Backend Changes
+- `backend/src/routes/admin.js` - stats endpoint con conteo real de users, premium/free
+- `backend/src/routes/downloads.js` - select('file_url, name') en vez de file_name
+- `backend/src/routes/resources.js` - eliminado file_name de insert()
+- `backend/src/services/driveSync.js` - eliminado file_name de update() e insert()
+- `backend/src/db/schema.sql` - eliminada columna file_name
+
+### Frontend Changes
+- `apps/mobile/lib/services/notification_service.dart` - REESCRITO
+- `apps/mobile/lib/main.dart` - Splash screen mejorada
+- `apps/mobile/lib/screens/home_screen.dart` - letterSpacing reducido
+- `apps/mobile/lib/screens/admin_screen.dart` - usa claves correctas del backend
+- `apps/mobile/pubspec.yaml` - assets de logos añadidos
+- `apps/mobile/web/manifest.json` - nombre actualizado
+- `apps/mobile/web/index.html` - título actualizado
+- `apps/mobile/android/app/src/main/AndroidManifest.xml` - label actualizado
+
+### Commits
+```
+backend: fix: admin stats con datos reales de Supabase
+backend: fix: columna file_name no existe en resources, usar name
+frontend: feat: notificaciones locales reales del sistema
+frontend: feat: splash screen mejorada con logo2
+frontend: fix: visible completo ALFAZULU en AppBar
+frontend: chore: cambiar nombre a AlfaZulu
+```
+
+---
+
+## 2026-05-09 - Notificaciones Sistema y Mejoras UI
+
+### Cambios Principales
+
+#### 1. Corrección Columna `file_name` en Resources
+- **Problema**: Tabla `public.resources` no tiene columna `file_name`, la columna correcta es `name`
+- **Error**: `PostgrestException: could not find file_name on table resources`
+- **Solución**: Reemplazar `file_name` por `name` en todas las consultas backend
+
+#### 2. Notificaciones Locales Reales del Sistema
+- Reescrito `notification_service.dart` completamente
+- NOT usa Firebase/FCM - solo flutter_local_notifications
+- Notificaciones aparecen como banner REAL del sistema incluso con app abierta
+- Dos canales: normal (high) e instantáneo (max priority)
+- Foreground polling cada 30 segundos
+- Permisos Android 13+ solicitados runtime
+
+#### 3. Logo y Branding
+- Cambiado logo1.png por logo2.png en assets
+- Splash screen usa logo2.png con animación mejorada
+- Nombre cambiado de "alfazulu" a "AlfaZulu" (capitalización)
+
+#### 4. Mejoras de UI
+- Loading screen con animación de rotación y shimmer
+- Título "ALFAZULU" en AppBar ahora visible completo (reducido letterSpacing)
+- Splash screen más elaborada con efectos de glow y rotación
+
+### Backend Changes
+- `backend/src/routes/downloads.js` - select('file_url, name') en vez de file_name
+- `backend/src/routes/resources.js` - eliminado file_name de insert()
+- `backend/src/services/driveSync.js` - eliminado file_name de update() e insert()
+- `backend/src/db/schema.sql` - eliminada columna file_name
+
+### Frontend Changes
+- `apps/mobile/lib/services/notification_service.dart` - REESCRITO
+- `apps/mobile/lib/main.dart` - Splash screen mejorada
+- `apps/mobile/lib/screens/home_screen.dart` - letterSpacing reducido
+- `apps/mobile/pubspec.yaml` - assets de logos añadidos
+- `apps/mobile/web/manifest.json` - nombre actualizado
+- `apps/mobile/web/index.html` - título actualizado
+- `apps/mobile/android/app/src/main/AndroidManifest.xml` - label actualizado
+
+### Commits
+```
+backend: fix: columna file_name no existe en resources, usar name
+frontend: feat: notificaciones locales reales del sistema
+frontend: feat: splash screen mejorada con logo2
+frontend: fix: visible completo ALFAZULU en AppBar
+frontend: chore: cambiar nombre a AlfaZulu
+```
+
+---
+
+## 2026-05-09 - Notificaciones Sistema y Mejoras UI
+
+### Cambios Principales
+
+#### 1. Notificaciones Locales Reales del Sistema
+- Reescrito `notification_service.dart` completamente
+- NOT usa Firebase/FCM - solo flutter_local_notifications
+- Notificaciones aparecen como banner REAL del sistema incluso con app abierta
+- Dos canales: normal (high) e instantáneo (max priority)
+- Foreground polling cada 30 segundos
+- Permisos Android 13+ solicitados runtime
+
+#### 2. Logo y Branding
+- Cambiado logo1.png por logo2.png en assets
+- Splash screen usa logo2.png con animación mejorada
+- Nombre cambiado de "alfazulu" a "AlfaZulu" (capitalización)
+
+#### 3. Mejoras de UI
+- Loading screen con animación de rotación y shimmer
+- Título "ALFAZULU" en AppBar ahora visible completo (reducido letterSpacing)
+- Splash screen más elaborada con efectos de glow y rotación
+
+### Backend Changes
+- Sin cambios en backend
+
+### Frontend Changes
+- `apps/mobile/lib/services/notification_service.dart` - REESCRITO
+- `apps/mobile/lib/main.dart` - Splash screen mejorada
+- `apps/mobile/lib/screens/home_screen.dart` - letterSpacing reducido
+- `apps/mobile/pubspec.yaml` - assets de logos añadidos
+- `apps/mobile/web/manifest.json` - nombre actualizado
+- `apps/mobile/web/index.html` - título actualizado
+- `apps/mobile/android/app/src/main/AndroidManifest.xml` - label actualizado
+
+### Commits
+```
+frontend: feat: notificaciones locales reales del sistema
+frontend: feat: splash screen mejorada con logo2
+frontend: fix: visible completo ALFAZULU en AppBar
+frontend: chore: cambiar nombre a AlfaZulu
+```
+
+---
+
 ## 2026-05-07 - Sesión Completa: Múltiples Fixes y Features
 
 ### Cambios Principales

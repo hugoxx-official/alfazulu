@@ -1,4 +1,4 @@
-$logoPath = "C:\Users\hugui\OneDrive\Escritorio\[Programacion]\Proyecto AlfaZulu\AlfaZulu\logo1.png"
+$logoPath = "C:\Users\hugui\OneDrive\Escritorio\[Programacion]\Proyecto AlfaZulu\AlfaZulu\logo2.png"
 $outputPath = "C:\Users\hugui\OneDrive\Escritorio\[Programacion]\Proyecto AlfaZulu\AlfaZulu\apps\mobile\playstore_assets"
 
 Add-Type -AssemblyName System.Drawing

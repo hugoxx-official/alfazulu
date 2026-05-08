@@ -1,5 +1,5 @@
 name: alfazulu
-description: Gestion de recursos militares
+description: AlfaZulu - Gestion de recursos militares
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -32,6 +32,8 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
+    - assets/logo1.png
+    - assets/logo2.png
 
 # Flutter Launcher Icons configuration
 flutter_launcher_icons:

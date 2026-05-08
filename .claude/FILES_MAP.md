@@ -29,8 +29,8 @@
 ### apps/mobile/lib/screens/admin_screen.dart
 - **Función**: Panel de administración
 - **Dependencias**: app_provider, http
-- **Features**: Users tab, Plans tab, stats reales
-- **Advertencias**: Requiere login admin con bcrypt
+- **Features**: Users tab, Plans tab, stats reales, planes dinámicos desde premium_plans
+- **Advertencias**: Requiere login admin con bcrypt. Planes se cargan dinámicamente desde API (no hardcodeados)
 
 ### apps/mobile/lib/screens/settings_screen.dart
 - **Función**: Ajustes y perfil de usuario
@@ -46,6 +46,12 @@
 - **Función**: Modelo de recurso
 - **Campos**: id, title, category, fileType, fileSize, thumbnailUrl, downloadUrl
 
+### apps/mobile/lib/services/notification_service.dart
+- **Función**: Servicio de notificaciones locales del sistema
+- **Dependencias**: flutter_local_notifications, permission_handler, shared_preferences
+- **Features**: Foreground polling 30s, canales high/max priority, permisos Android 13+
+- **Advertencias**: NO usa Firebase/FCM, solo notificaciones locales
+
 ## Backend Node.js
 
 ### backend/src/server.js
@@ -60,7 +66,8 @@
 ### backend/src/routes/resources.js
 - **Función**: Endpoints de recursos
 - **Features**: Favoritos por usuario, búsqueda
-- **Endpoints**: GET /, POST /:id/favorite, GET /favorites/:user_id
+- **Endpoints**: GET /, POST /, GET /:id, DELETE /:id, POST /:id/favorite, GET /favorites/:user_id
+- **Schema**: resources (name, category, description, file_url, file_size, mime_type)
 
 ### backend/src/routes/users.js
 - **Función**: Gestión de usuarios

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'providers/app_provider.dart';
 import 'screens/home_screen.dart';
@@ -45,16 +46,24 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  late AnimationController _rotateController;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
   late Animation<double> _glowAnimation;
+  late Animation<double> _rotateAnimation;
+  late Animation<double> _shimmerAnimation;
   bool _hasSession = false;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 2000),
+      duration: const Duration(milliseconds: 2500),
+      vsync: this,
+    );
+
+    _rotateController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
       vsync: this,
     );
 
@@ -70,7 +79,16 @@ class _SplashScreenState extends State<SplashScreen>
       CurvedAnimation(parent: _controller, curve: const Interval(0.3, 0.8, curve: Curves.easeInOut)),
     );
 
+    _rotateAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _rotateController, curve: Curves.easeInOut),
+    );
+
+    _shimmerAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: const Interval(0.5, 1.0, curve: Curves.easeInOut)),
+    );
+
     _controller.forward();
+    _rotateController.repeat();
 
     // Cargar sesión con timeout para evitar freeze
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -91,7 +109,7 @@ class _SplashScreenState extends State<SplashScreen>
       }
 
       // Navegar después de la animación (sin password dialog - acceso abierto)
-      await Future.delayed(const Duration(milliseconds: 2500));
+      await Future.delayed(const Duration(milliseconds: 3000));
       if (mounted) {
         try {
           Navigator.of(context).pushReplacement(
@@ -111,6 +129,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void dispose() {
     _controller.dispose();
+    _rotateController.dispose();
     super.dispose();
   }
 
@@ -125,74 +144,108 @@ class _SplashScreenState extends State<SplashScreen>
             return Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Glow effect
+                // Glow effect with pulsing
                 FadeTransition(
                   opacity: _glowAnimation,
-                  child: Container(
-                    width: 200,
-                    height: 200,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [
-                          Colors.red.withOpacity(0.3 * _glowAnimation.value),
-                          Colors.red.withOpacity(0.1 * _glowAnimation.value),
-                          Colors.transparent,
-                        ],
-                      ),
-                    ),
+                  child: AnimatedBuilder(
+                    animation: _shimmerAnimation,
+                    builder: (context, _) {
+                      return Container(
+                        width: 220,
+                        height: 220,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: RadialGradient(
+                            colors: [
+                              Colors.red.withOpacity(0.4 * _glowAnimation.value * (0.5 + 0.5 * _shimmerAnimation.value)),
+                              Colors.red.withOpacity(0.15 * _glowAnimation.value),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
-                // Logo/Icon
+                // Logo with rotation and shimmer
                 ScaleTransition(
                   scale: _scaleAnimation,
                   child: FadeTransition(
                     opacity: _fadeAnimation,
-                    child: Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.red, width: 2),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.red.withOpacity(0.5),
-                            blurRadius: 30 * _glowAnimation.value,
-                            spreadRadius: 5 * _glowAnimation.value,
+                    child: AnimatedBuilder(
+                      animation: _rotateAnimation,
+                      builder: (context, _) {
+                        return Transform.rotate(
+                          angle: _rotateAnimation.value * 0.05, // Slight rotation
+                          child: Container(
+                            width: 140,
+                            height: 140,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.red.withOpacity(0.6 * _glowAnimation.value),
+                                  blurRadius: 40 * _glowAnimation.value,
+                                  spreadRadius: 8 * _glowAnimation.value,
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(20),
+                              child: ColorFiltered(
+                                colorFilter: ColorFilter.mode(
+                                  Colors.red.withOpacity(0.3 + 0.4 * _shimmerAnimation.value),
+                                  BlendMode.srcATop,
+                                ),
+                                child: Image.asset(
+                                  'assets/logo2.png',
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => Container(
+                                    color: Colors.red.withOpacity(0.3),
+                                    child: const Icon(
+                                      Icons.shield_outlined,
+                                      size: 80,
+                                      color: Colors.red,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.security,
-                        size: 80,
-                        color: Colors.red,
-                      ),
+                        );
+                      },
                     ),
                   ),
                 ),
                 const SizedBox(height: 40),
-                // Title
+                // Title with shimmer effect
                 FadeTransition(
                   opacity: _fadeAnimation,
                   child: Column(
                     children: [
-                      Text(
-                        'ALFAZULU',
-                        style: TextStyle(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.red,
-                          letterSpacing: 8,
-                          shadows: [
-                            Shadow(
-                              color: Colors.red.withOpacity(0.5),
-                              blurRadius: 20,
+                      AnimatedBuilder(
+                        animation: _shimmerAnimation,
+                        builder: (context, _) {
+                          return Text(
+                            'ALFAZULU',
+                            style: TextStyle(
+                              fontSize: 32,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red,
+                              letterSpacing: 8,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.red.withOpacity(0.5 + 0.3 * _shimmerAnimation.value),
+                                  blurRadius: 20 + 10 * _shimmerAnimation.value,
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'GESTION DE RECURSOS',
+                        'GESTIÓN DE RECURSOS',
                         style: TextStyle(
                           fontSize: 11,
                           color: Colors.grey[600],
@@ -203,19 +256,23 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                 ),
                 const SizedBox(height: 60),
-                // Loading indicator
+                // Loading indicator with pulse
                 FadeTransition(
                   opacity: _fadeAnimation,
-                  child: SizedBox(
-                    width: 40,
-                    height: 40,
-                    child: CircularProgressIndicator(
-                      color: Colors.red,
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Colors.red.withOpacity(0.5 + 0.5 * _glowAnimation.value),
-                      ),
-                    ),
+                  child: AnimatedBuilder(
+                    animation: _shimmerAnimation,
+                    builder: (context, _) {
+                      return SizedBox(
+                        width: 50,
+                        height: 50,
+                        child: CircularProgressIndicator(
+                          color: Colors.red,
+                          strokeWidth: 2.5,
+                          value: 0.3 + 0.4 * _shimmerAnimation.value,
+                          backgroundColor: Colors.red.withOpacity(0.2),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
