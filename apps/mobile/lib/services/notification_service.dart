@@ -73,7 +73,7 @@ class NotificationService {
       }
 
       // Verificar si tenemos permiso
-      final hasPermission = await Permission.notification.isEnabled;
+      final hasPermission = await Permission.notification.isGranted;
       debugPrint('[NotificationService] Permiso habilitado: $hasPermission');
     } catch (e) {
       debugPrint('[NotificationService] Error solicitando permisos: $e');
@@ -91,7 +91,6 @@ class NotificationService {
         importance: Importance.high,
         playSound: true,
         enableVibration: true,
-        showBadge: true,
         enableLights: true,
         ledColor: Colors.red,
       );
@@ -104,7 +103,6 @@ class NotificationService {
         importance: Importance.max,
         playSound: true,
         enableVibration: true,
-        showBadge: true,
         enableLights: true,
         ledColor: Colors.amber,
       );
@@ -286,8 +284,6 @@ class NotificationService {
         // Sonido y vibración
         playSound: true,
         enableVibration: true,
-        // Mostrar badge en el icono de la app
-        showBadge: true,
         // Categoría para Android 11+
         category: AndroidNotificationCategory.message,
         // Visibilidad en lock screen
