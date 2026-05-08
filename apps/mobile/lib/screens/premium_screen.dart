@@ -61,14 +61,43 @@ class _PremiumScreenState extends State<PremiumScreen>
     super.dispose();
   }
 
-  int _getPlanSortValue(String? planName) {
+  int _getPlanSortValue(String? planName, String? currentPlanName) {
     if (planName == null) return 0;
-    switch (planName.toLowerCase()) {
-      case 'free': return 0;
-      case 'premium': return 1;
-      case 'premium_plus': return 2;
-      default: return 0;
-    }
+    // Use sort_order from plan data if available
+    return 0; // Will be compared directly using sort_order
+  }
+
+  bool _isPlanBetterOrEqual(String? planName, String? currentPlanName, List<Map<String, dynamic>> allPlans) {
+    if (planName == null || currentPlanName == null) return false;
+
+    // Find sort orders
+    final planSortOrder = allPlans.firstWhere(
+      (p) => p['plan_name'] == planName,
+      orElse: () => {'sort_order': 0},
+    )['sort_order'] as int? ?? 0;
+
+    final currentSortOrder = allPlans.firstWhere(
+      (p) => p['plan_name'] == currentPlanName,
+      orElse: () => {'sort_order': 0},
+    )['sort_order'] as int? ?? 0;
+
+    return planSortOrder >= currentSortOrder;
+  }
+
+  bool _isCurrentPlanOrBetter(String planName, String? currentPlanName, List<Map<String, dynamic>> allPlans) {
+    if (currentPlanName == null) return false;
+
+    final planSortOrder = allPlans.firstWhere(
+      (p) => p['plan_name'] == planName,
+      orElse: () => {'sort_order': 0},
+    )['sort_order'] as int? ?? 0;
+
+    final currentSortOrder = allPlans.firstWhere(
+      (p) => p['plan_name'] == currentPlanName,
+      orElse: () => {'sort_order': 0},
+    )['sort_order'] as int? ?? 0;
+
+    return planSortOrder <= currentSortOrder;
   }
 
   @override
@@ -78,13 +107,14 @@ class _PremiumScreenState extends State<PremiumScreen>
     final isPremium = provider.currentUser?.isPremium ?? false;
     final premiumPlan = provider.currentUser?.premiumPlan;
     final subscriptionEnd = provider.currentUser?.subscriptionEnd;
-    final currentPlanSort = _getPlanSortValue(premiumPlan);
+    final currentPlanSort = 0;
 
     // Filtrar planes: no mostrar planes iguales o inferiores al actual
     final availablePlans = _plans.where((plan) {
       if (!isPremium) return true;
-      final planSort = _getPlanSortValue(plan['plan_name']);
-      return planSort > currentPlanSort;
+      // Don't show plans that are equal or worse than current
+      if (_isCurrentPlanOrBetter(plan['plan_name'] ?? '', premiumPlan, _plans)) return false;
+      return true;
     }).toList();
 
     return Scaffold(
@@ -391,20 +421,21 @@ class _PremiumScreenState extends State<PremiumScreen>
   Widget _buildPlanCard(Map<String, dynamic> plan, bool isTablet, bool isPremium) {
     final planName = plan['plan_name'] ?? '';
     final displayName = plan['display_name'] ?? 'Unknown';
-    final priceMonthly = plan['price_monthly'] ?? '0';
-    final priceLifetime = plan['price_lifetime'] ?? '0';
+    final priceMonthly = plan['price_monthly']?.toString() ?? '0';
+    final priceLifetime = plan['price_lifetime']?.toString() ?? '0';
 
     // Mostrar precio según el tipo de pago seleccionado
     String displayPrice;
     if (_selectedPaymentType == 'vitalicio') {
-      final price = priceLifetime == '0' ? 'Gratis' : '\$${priceLifetime} (pago único)';
+      final price = priceLifetime == '0' ? 'Gratis' : '${priceLifetime}€ (pago único)';
       displayPrice = price;
     } else {
-      final price = priceMonthly == '0' ? 'Gratis' : '\$${priceMonthly}/mes';
+      final price = priceMonthly == '0' ? 'Gratis' : '${priceMonthly}€/mes';
       displayPrice = price;
     }
 
-    final color = plan['color'] ?? '#666666';
+    final colorHex = plan['color'] ?? '#FF003C';
+    final color = _hexToColor(colorHex);
     final features = (plan['features'] as List?)?.map((e) => e.toString()).toList() ?? [];
     final limitations = (plan['limitations'] as List?)?.map((e) => e.toString()).toList() ?? [];
 
@@ -413,7 +444,7 @@ class _PremiumScreenState extends State<PremiumScreen>
       padding: const EdgeInsets.all(1),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(int.parse(color.replaceFirst('#', '0xFF'))), Colors.black],
+          colors: [color, Colors.black],
         ),
         borderRadius: BorderRadius.circular(16),
       ),
@@ -437,7 +468,7 @@ class _PremiumScreenState extends State<PremiumScreen>
                       style: GoogleFonts.orbitron(
                         fontSize: isTablet ? 20 : 16,
                         fontWeight: FontWeight.bold,
-                        color: Color(int.parse(color.replaceFirst('#', '0xFF'))),
+                        color: color,
                         letterSpacing: 2,
                       ),
                     ),
@@ -479,7 +510,7 @@ class _PremiumScreenState extends State<PremiumScreen>
               child: ElevatedButton(
                 onPressed: () => _requestPlan(displayName, planName),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(int.parse(color.replaceFirst('#', '0xFF'))),
+                  backgroundColor: color,
                   foregroundColor: Colors.white,
                   padding: EdgeInsets.symmetric(vertical: isTablet ? 16 : 14),
                   shape: RoundedRectangleBorder(
@@ -556,6 +587,18 @@ class _PremiumScreenState extends State<PremiumScreen>
   String _formatDate(DateTime date) {
     final months = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
     return '${date.day} ${months[date.month - 1]} ${date.year}';
+  }
+
+  Color _hexToColor(String hexColor) {
+    hexColor = hexColor.toUpperCase().replaceAll('#', '');
+    if (hexColor.length == 6) {
+      hexColor = 'FF$hexColor';
+    }
+    try {
+      return Color(int.parse(hexColor, radix: 16));
+    } catch (e) {
+      return Colors.red;
+    }
   }
 
   void _requestPlan(String displayName, String planName) {

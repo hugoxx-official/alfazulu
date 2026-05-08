@@ -21,7 +21,8 @@
       "Bash(Get-ChildItem *)",
       "Bash(git rm *)",
       "Bash(Copy-Item *)",
-      "Bash(dart run *)"
+      "Bash(dart run *)",
+      "Bash(keytool -genkey -v -keystore alfazulu-release-key.keystore -alias alfazulu -keyalg RSA -keysize 2048 -validity 10000 -storepass alfazulu2026 -keypass alfazulu2026 -dname \"CN=AlfaZulu, OU=Desarrollo, O=AlfaZulu, L=Madrid, S=Madrid, C=ES\")"
     ]
   }
 }

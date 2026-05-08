@@ -44,3 +44,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Keystore and signing (NEVER commit these)
+/android/*.keystore
+/android/key.properties
+/android/**/*.keystore
+
+# Play Store assets (keep originals, exclude generated)
+/playstore_assets/*.png
