@@ -17,7 +17,11 @@
       "Bash(gh repo *)",
       "WebFetch(domain:raw.githubusercontent.com)",
       "WebFetch(domain:api.github.com)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(Get-ChildItem *)",
+      "Bash(git rm *)",
+      "Bash(Copy-Item *)",
+      "Bash(dart run *)"
     ]
   }
 }
