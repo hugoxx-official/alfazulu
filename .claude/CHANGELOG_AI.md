@@ -1,5 +1,47 @@
 # CHANGELOG AI
 
+## 2026-05-09 - Auditoría Completa Código vs Database
+
+### Cambios Principales
+
+#### 1. Auditoría de Database Supabase
+- **Problema**: Schema.sql desactualizado, faltan tablas y columnas críticas
+- **Solución**: Generado informe completo de auditoría (`AUDIT_REPORT.md`)
+- **Tablas detectadas faltantes**: `notifications`, `premium_plans`
+- **Columnas faltantes**: 20+ columnas en users, resources, maps
+- **Índices faltantes**: 15+ índices para performance
+- **RLS policies**: Actualizadas para seguridad correcta
+
+#### 2. Migración SQL Creada
+- Archivo: `backend/src/db/migrations/001_audit_fixes.sql`
+- Crea tablas faltantes (notifications, premium_plans)
+- Añade columnas faltantes (ALTER TABLE)
+- Crea índices necesarios
+- Configura RLS policies correctamente
+- Seed data para premium_plans
+
+#### 3. Schema Actualizado
+- `backend/src/db/schema.sql` reescrito completamente
+- Ahora refleja 100% el código actual
+- Incluye todas las tablas, columnas, índices y policies
+
+### Backend Changes
+- `backend/src/db/schema.sql` - COMPLETAMENTE REESCRITO
+- `backend/src/db/migrations/001_audit_fixes.sql` - NUEVO
+- `backend/audit-supabase.js` - Script de auditoría
+
+### Documentación
+- `.claude/AUDIT_REPORT.md` - INFORME COMPLETO DE AUDITORÍA
+
+### Commits
+```
+backend: chore: auditoría completa código vs database
+backend: fix: schema.sql actualizado con todas las tablas
+backend: feat: migración SQL para audit fixes
+```
+
+---
+
 ## 2026-05-09 - Planes Premium Dinámicos desde Supabase
 
 ### Cambios Principales
