@@ -35,9 +35,5 @@ flutter:
 
 # Flutter Launcher Icons configuration
 flutter_launcher_icons:
-  android: true
-  ios: true
-  web:
-    generate: true
-    image_path: "assets/app_icon.png"
-  image_path: "assets/app_icon.png"
+  android: "launcher_icon"
+  image_path: "assets/logo2.png"
