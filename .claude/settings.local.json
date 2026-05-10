@@ -32,7 +32,13 @@
       "Bash(Select-Object -First 30)",
       "Bash(npm create *)",
       "Bash(robocopy C:\\\\Users\\\\hugui\\\\OneDrive\\\\Escritorio\\\\[Programacion]\\\\Proyecto AlfaZulu\\\\AlfaZulu\\\\apps\\\\mobile\\\\assets *)",
-      "Bash(curl *)"
+      "Bash(curl *)",
+      "Bash(xcopy *)",
+      "Bash(cp logo2.png apps/mobile/web/favicon.png)",
+      "Bash(cp logo2.png apps/mobile/web/icons/Icon-192.png)",
+      "Bash(cp logo2.png apps/mobile/web/icons/Icon-512.png)",
+      "Bash(cp logo2.png apps/mobile/web/icons/Icon-maskable-192.png)",
+      "Bash(cp logo2.png apps/mobile/web/icons/Icon-maskable-512.png)"
     ]
   }
 }

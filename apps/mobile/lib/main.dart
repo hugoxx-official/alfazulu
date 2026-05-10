@@ -198,7 +198,7 @@ class _SplashScreenState extends State<SplashScreen>
                                   BlendMode.srcATop,
                                 ),
                                 child: Image.asset(
-                                  'assets/logo2.png',
+                                  'logo2.png',
                                   fit: BoxFit.contain,
                                   errorBuilder: (_, __, ___) => Container(
                                     color: Colors.red.withOpacity(0.3),
