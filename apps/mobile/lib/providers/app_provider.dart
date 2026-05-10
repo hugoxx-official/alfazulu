@@ -11,7 +11,7 @@ import '../models/user.dart';
 class AppProvider extends ChangeNotifier {
   // URL del backend - Backend desplegado en Railway
   static String get apiUrl {
-    return 'https://backend-api-production-0cd8.up.railway.app/api';
+    return 'https://backend.alfazulu.pro/api';
   }
 
   User? _currentUser;

@@ -30,7 +30,7 @@ class NotificationService {
   static const String _instantChannelId = 'alfazulu_instant';
 
   // API
-  static const String _apiUrl = 'https://backend-api-production-0cd8.up.railway.app/api';
+  static const String _apiUrl = 'https://backend.alfazulu.pro/api';
 
   /// Registrar token FCM en el backend
   Future<void> registerFCMToken(String? userId) async {
