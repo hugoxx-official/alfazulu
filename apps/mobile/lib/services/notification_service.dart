@@ -3,20 +3,22 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
 
-/// Servicio de notificaciones locales del sistema
+/// Servicio de notificaciones del sistema
 ///
 /// Muestra notificaciones REALES del sistema Android/iOS incluso con la app abierta.
-/// NO usa Firebase/FCM - solo notificaciones locales.
+/// Usa Firebase Cloud Messaging (FCM) para notificaciones push.
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
 
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
+  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final StreamController<int> _unreadController = StreamController<int>.broadcast();
 
   bool _isInitialized = false;
@@ -29,6 +31,52 @@ class NotificationService {
 
   // API
   static const String _apiUrl = 'https://backend-api-production-0cd8.up.railway.app/api';
+
+  /// Registrar token FCM en el backend
+  Future<void> registerFCMToken(String? userId) async {
+    if (userId == null) return;
+
+    try {
+      final token = await _messaging.getToken();
+      if (token == null) return;
+
+      final prefs = await SharedPreferences.getInstance();
+      final storedToken = prefs.getString('fcm_token');
+
+      // Solo registrar si el token es nuevo
+      if (storedToken == token) {
+        debugPrint('[NotificationService] Token FCM ya registrado');
+        return;
+      }
+
+      final response = await http.post(
+        Uri.parse('$_apiUrl/users/register-device'),
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'user_id': userId,
+          'device_token': token,
+          'platform': 'android',
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        await prefs.setString('fcm_token', token);
+        debugPrint('[NotificationService] Token FCM registrado en backend');
+      }
+    } catch (e) {
+      debugPrint('[NotificationService] Error registrando token FCM: $e');
+    }
+  }
+
+  /// Escuchar cambios en el token FCM
+  void setupTokenRefresh(String? userId) {
+    if (userId == null) return;
+
+    _messaging.onTokenRefresh.listen((newToken) {
+      debugPrint('[NotificationService] Token FCM refresh: ${newToken.substring(0, 20)}...');
+      registerFCMToken(userId);
+    });
+  }
 
   /// Stream para escuchar cambios en el contador de no leídas
   Stream<int>? get unreadStream => _unreadController.stream;
@@ -52,14 +100,72 @@ class NotificationService {
     // 3. Inicializar plugin con configuración para mostrar notificaciones del sistema
     await _initializePlugin();
 
-    // 4. Cargar contador inicial
+    // 4. Configurar FCM
+    await _setupFCM();
+
+    // 5. Cargar contador inicial
     await _loadUnreadCount();
 
-    // 5. Iniciar polling en foreground (cada 30 segundos)
+    // 6. Iniciar polling en foreground (cada 30 segundos)
     _startForegroundPolling();
 
     _isInitialized = true;
     debugPrint('[NotificationService] Servicio inicializado correctamente');
+  }
+
+  /// Configurar Firebase Cloud Messaging
+  Future<void> _setupFCM() async {
+    try {
+      // Request permission
+      await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      // Get FCM token
+      final token = await _messaging.getToken();
+      debugPrint('[NotificationService] FCM Token: ${token?.substring(0, 20)}...');
+
+      // Register token when user loads
+      _loadUnreadCount().then((_) {
+        // Get user_id from prefs
+        SharedPreferences.getInstance().then((prefs) {
+          final userId = prefs.getString('user_id');
+          if (userId != null) {
+            registerFCMToken(userId);
+            setupTokenRefresh(userId);
+          }
+        });
+      });
+
+      // Handle foreground messages
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        debugPrint('[NotificationService] FCM message received: ${message.messageId}');
+        _handleFCMMessage(message);
+      });
+
+      // Handle notification tap
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        debugPrint('[NotificationService] Notification tapped: ${message.messageId}');
+      });
+    } catch (e) {
+      debugPrint('[NotificationService] Error configurando FCM: $e');
+    }
+  }
+
+  /// Manejar mensaje FCM en foreground
+  void _handleFCMMessage(RemoteMessage message) {
+    final title = message.notification?.title ?? 'AlfaZulu';
+    final body = message.notification?.body ?? '';
+    final type = message.data['type'] ?? 'info';
+
+    showSystemNotification(
+      title: title,
+      body: body,
+      type: type,
+      payload: json.encode(message.data),
+    );
   }
 
   /// Solicitar permisos de notificación

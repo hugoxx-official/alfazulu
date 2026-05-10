@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'providers/app_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/maps_screen.dart';
@@ -10,11 +12,35 @@ import 'screens/premium_screen.dart';
 import 'theme/app_theme.dart';
 import 'services/notification_service.dart';
 
+// Background message handler
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp();
+  print('Handling background message: ${message.messageId}');
+  await NotificationService().showNotification(
+    title: message.notification?.title ?? 'AlfaZulu',
+    body: message.notification?.body ?? 'Nueva notificación',
+  );
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize Firebase
+  await Firebase.initializeApp();
+
   // Initialize notification service
   await NotificationService().init();
+
+  // Setup FCM
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // Request permission
+  await FirebaseMessaging.instance.requestPermission(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
 
   runApp(const AlfaZuluApp());
 }

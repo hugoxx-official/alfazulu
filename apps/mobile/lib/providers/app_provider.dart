@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/notification_service.dart';
 import '../models/resource.dart';
 import '../models/map.dart';
 import '../models/user.dart';
@@ -119,6 +120,9 @@ class AppProvider extends ChangeNotifier {
           await prefs.setString('subscription_end', user.subscriptionEnd!.toIso8601String());
         }
 
+        // Registrar token FCM si cambió el estado premium
+        NotificationService().registerFCMToken(user.id);
+
         notifyListeners();
       }
     } catch (e) {
@@ -175,6 +179,9 @@ class AppProvider extends ChangeNotifier {
         }
 
         print('SharedPreferences guardados');
+
+        // Registrar token FCM
+        NotificationService().registerFCMToken(_currentUser!.id);
 
         _hasLoadedInitialSession = true;
         notifyListeners();
